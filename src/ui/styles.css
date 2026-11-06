@@ -78,3 +78,5 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .price { margin-left: auto; color: var(--accent); font-weight: 700; }
 .passive .head { display: flex; gap: 8px; align-items: baseline; }
 .toast { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); border: 1px solid var(--accent); border-radius: 10px; padding: 10px 12px; }
+.set-army { margin-left: 6px; letter-spacing: 2px; opacity: .8; }
+small.warn { font-weight: 600; }

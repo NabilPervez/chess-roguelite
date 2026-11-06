@@ -15,16 +15,30 @@ export interface RunState {
   gold: number;
   status: 'map' | 'won' | 'lost';
   fightsWon: number;
+  /** Draft grows the army from rewards; Set starts with a fixed army and never gains pieces. */
+  mode: RunMode;
 }
+
+export type RunMode = 'draft' | 'set';
+export const SETS = tuning.run.sets as Record<string, { name: string; desc: string; army: string[]; passive: string }>;
 
 export type Reward = { type: 'passive'; id: string } | { type: 'piece'; kind: Kind } | { type: 'gold'; amount: number };
 
 export function newRun(seed: number, startPassive: string): RunState {
   return {
     seed, map: generateMap(mulberry32(seed)), at: null, army: [...tuning.run.startArmy] as Kind[],
-    passives: [startPassive], gold: 0, status: 'map', fightsWon: 0,
+    passives: [startPassive], gold: 0, status: 'map', fightsWon: 0, mode: 'draft',
   };
 }
+
+/** Set mode: a prebuilt army plus its signature passive. */
+export function newSetRun(seed: number, setId: string): RunState {
+  const set = SETS[setId];
+  if (!set) throw new Error(`Unknown set ${setId}`);
+  return { ...newRun(seed, set.passive), army: [...set.army] as Kind[], mode: 'set' };
+}
+
+const canGainPieces = (run: RunState) => run.mode !== 'set' && run.army.length < tuning.run.pieceCap;
 
 export const startingPassiveChoices = (rand: Rand) => sample(rand, Object.keys(PASSIVES), tuning.run.startPassiveChoices);
 
@@ -36,7 +50,8 @@ export function reachable(run: RunState): MapNode[] {
 
 export function fightOpts(node: MapNode): { court: string | null; enemyPassives: string[]; opts: FightOpts } {
   if (node.type === 'boss') {
-    return { court: node.court, enemyPassives: tuning.run.boss.passives, opts: { enemyArmy: tuning.run.boss.army as Kind[], capturesToWin: Infinity, turnLimit: tuning.run.boss.turnLimit } };
+    const b = tuning.run.boss;
+    return { court: node.court, enemyPassives: b.passives, opts: { enemyArmy: b.army as Kind[], capturesToWin: Infinity, turnLimit: b.turnLimit, checkmate: b.checkmate } };
   }
   const tiers = tuning.run.enemyTiers;
   const base = Math.floor((node.row / tuning.run.rows) * tiers.length);
@@ -44,7 +59,7 @@ export function fightOpts(node: MapNode): { court: string | null; enemyPassives:
     const e = tuning.run.elite;
     const enemyArmy = tiers[Math.min(tiers.length - 1, base + e.tierBoost)] as Kind[];
     const passive = e.passivePool[(node.row * 7 + node.col) % e.passivePool.length];
-    return { court: node.court, enemyPassives: [passive], opts: { enemyArmy, capturesToWin: Infinity, turnLimit: e.turnLimit } };
+    return { court: node.court, enemyPassives: [passive], opts: { enemyArmy, capturesToWin: Infinity, turnLimit: e.turnLimit, checkmate: e.checkmate } };
   }
   const enemyArmy = tiers[Math.min(tiers.length - 1, base)] as Kind[];
   return { court: node.court, enemyPassives: [], opts: { enemyArmy, capturesToWin: Math.min(tuning.objective.capturesToWin, enemyArmy.length - 1) } };
@@ -60,7 +75,7 @@ export function rollRewards(run: RunState, rand: Rand, elite = false): Reward[] 
     return out;
   }
   if (unowned.length) out.push({ type: 'passive', id: pick(rand, unowned) });
-  if (run.army.length < tuning.run.pieceCap) out.push({ type: 'piece', kind: pick(rand, tuning.run.rewardPieces) as Kind });
+  if (canGainPieces(run)) out.push({ type: 'piece', kind: pick(rand, tuning.run.rewardPieces) as Kind });
   out.push({ type: 'gold', amount: tuning.run.rewardGold });
   while (out.length < 3 && unowned.length > 1) {
     const id = pick(rand, unowned);
@@ -72,7 +87,7 @@ export function rollRewards(run: RunState, rand: Rand, elite = false): Reward[] 
 /** Apply a reward. For a passive at the cap, `replace` names the passive to drop. */
 export function applyReward(run: RunState, r: Reward, replace?: string): RunState {
   if (r.type === 'gold') return { ...run, gold: run.gold + r.amount };
-  if (r.type === 'piece') return run.army.length >= tuning.run.pieceCap ? run : { ...run, army: [...run.army, r.kind] };
+  if (r.type === 'piece') return !canGainPieces(run) ? run : { ...run, army: [...run.army, r.kind] };
   if (run.passives.length < tuning.passives.maxActive) return { ...run, passives: [...run.passives, r.id] };
   if (!replace || !run.passives.includes(replace)) throw new Error('Passive cap reached: choose one to replace');
   return { ...run, passives: run.passives.map((p) => (p === replace ? r.id : p)) };
@@ -99,7 +114,7 @@ export function rollShop(run: RunState, rand: Rand): ShopItem[] {
   const unowned = Object.keys(PASSIVES).filter((id) => !run.passives.includes(id));
   return [
     ...sample(rand, unowned, s.passiveOffers).map((id) => ({ type: 'passive' as const, id, price: s.passivePrice })),
-    ...sample(rand, Object.keys(prices), s.pieceOffers).map((k) => ({ type: 'piece' as const, kind: k as Kind, price: prices[k] })),
+    ...(run.mode === 'set' ? [] : sample(rand, Object.keys(prices), s.pieceOffers)).map((k) => ({ type: 'piece' as const, kind: k as Kind, price: prices[k] })),
     { type: 'remove', price: s.removePrice },
   ];
 }
@@ -113,7 +128,7 @@ export function buy(run: RunState, item: ShopItem, target?: string): RunState {
     return dropPassive(paid, target);
   }
   if (item.type === 'piece') {
-    if (run.army.length >= tuning.run.pieceCap) throw new Error('Army is full');
+    if (!canGainPieces(run)) throw new Error('Army is full');
     return { ...paid, army: [...paid.army, item.kind] };
   }
   return applyReward(paid, { type: 'passive', id: item.id }, target);
@@ -128,7 +143,7 @@ export const EVENT_IDS = ['smith', 'deserter', 'shrine', 'gambler'] as const;
 
 export function describeEvent(id: string, run: RunState): RunEvent {
   const pawn = run.army.includes('P');
-  const room = run.army.length < tuning.run.pieceCap;
+  const room = canGainPieces(run);
   switch (id) {
     case 'smith': return { id, title: 'The Wandering Smith', text: 'A smith offers to reforge one of your pawns.', choices: [
       { label: `Pay ◈ ${EV.smithCost}`, desc: 'A pawn becomes a queen.', ok: pawn && run.gold >= EV.smithCost },

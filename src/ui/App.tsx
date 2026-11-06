@@ -5,11 +5,13 @@ import { newGame } from '../rules/board';
 import type { Kind } from '../rules/types';
 import type { MapNode } from '../run/map';
 import { mulberry32 } from '../run/rng';
-import { applyReward, buy, describeEvent, dropPassive, fightOpts, newRun, promotePawn, resolveEvent, rollEvent, rollRewards, rollShop, startingPassiveChoices, type Reward, type RunState, type ShopItem } from '../run/run';
+import { applyReward, buy, describeEvent, dropPassive, fightOpts, newRun, newSetRun, promotePawn, resolveEvent, rollEvent, rollRewards, rollShop, SETS, startingPassiveChoices, type Reward, type RunMode, type RunState, type ShopItem } from '../run/run';
+import { clearSave, loadSave, writeSave } from '../run/save';
+import type { GameState } from '../rules/types';
 import { COURT_ICON, Fight } from './Fight';
 import { MapView } from './MapView';
 
-type Screen = { kind: 'start' } | { kind: 'map' } | { kind: 'fight'; node: MapNode } | { kind: 'reward'; offers: Reward[] } | { kind: 'rest' } | { kind: 'shop'; items: ShopItem[]; bought: number[] } | { kind: 'event'; id: string; result?: string } | { kind: 'end' };
+type Screen = { kind: 'start' } | { kind: 'map' } | { kind: 'fight'; node: MapNode } | { kind: 'boss'; node: MapNode } | { kind: 'reward'; offers: Reward[] } | { kind: 'rest' } | { kind: 'shop'; items: ShopItem[]; bought: number[] } | { kind: 'event'; id: string; result?: string } | { kind: 'end' };
 const PIECE: Record<string, string> = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟' };
 const PIECE_NAME: Record<string, string> = { K: 'King', Q: 'Queen', R: 'Rook', B: 'Bishop', N: 'Knight', P: 'Pawn' };
 
@@ -21,7 +23,26 @@ export function App() {
   const [shopPick, setShopPick] = useState<{ item: ShopItem; i: number } | null>(null);
   const rand = useRef(mulberry32(seed));
   const [choices, setChoices] = useState(() => startingPassiveChoices(mulberry32(seed)));
+  const [mode, setMode] = useState<RunMode>('draft');
+  const [saved, setSaved] = useState(() => loadSave());
+  const fightRef = useRef<{ nodeId: string; game: GameState } | undefined>(undefined);
   useEffect(() => { rand.current = mulberry32(seed); setChoices(startingPassiveChoices(mulberry32(seed))); }, [seed]);
+
+  // Autosave after every step of a live run; a finished run clears the save.
+  const persist = (r: RunState | null, sc: Screen) => {
+    if (!r || sc.kind === 'start') return;
+    if (r.status !== 'map' || sc.kind === 'end') { clearSave(); return; }
+    writeSave({ run: r, screen: sc, fight: sc.kind === 'fight' ? fightRef.current : undefined });
+  };
+  useEffect(() => persist(run, screen), [run, screen]);
+
+  const begin = (r: RunState) => { fightRef.current = undefined; setRun(r); setScreen({ kind: 'map' }); };
+  const resume = () => {
+    if (!saved) return;
+    rand.current = mulberry32(saved.run.seed + saved.run.fightsWon * 7919 + saved.run.gold);
+    fightRef.current = saved.fight;
+    setSeed(saved.run.seed); setRun(saved.run); setScreen(saved.screen as Screen); setSaved(null);
+  };
 
   const army = run && (
     <div className="army" aria-label="Your army">
@@ -33,23 +54,47 @@ export function App() {
   if (screen.kind === 'start') return (
     <main className="shell">
       <header className="title"><span className="eyebrow">New run · Act 1</span><h1>Gambit Spire</h1></header>
+      {saved && (
+        <section className="card">
+          <span className="eyebrow">Run in progress</span>
+          <p>Row {saved.run.at ? Number(saved.run.at.split('-')[0]) + 1 : 1} · {saved.run.fightsWon} fights won · ◈ {saved.run.gold}</p>
+          <div className="row">
+            <button className="primary" onClick={resume}>Continue run</button>
+            <button className="ghost" onClick={() => { clearSave(); setSaved(null); }}>Abandon</button>
+          </div>
+        </section>
+      )}
       <section className="card">
         <span className="eyebrow">Army mode</span>
         <div className="passive-grid">
-          <button className="passive on" aria-pressed="true"><strong>Draft</strong><span>Start with a king and 4 pawns. Win pieces as you climb.</span></button>
-          <button className="passive" disabled><strong>Set</strong><span>Prebuilt armies — coming in a later sprint.</span></button>
+          <button className={`passive${mode === 'draft' ? ' on' : ''}`} aria-pressed={mode === 'draft'} onClick={() => setMode('draft')}><strong>Draft</strong><span>Start with a king and 4 pawns. Win pieces as you climb.</span></button>
+          <button className={`passive${mode === 'set' ? ' on' : ''}`} aria-pressed={mode === 'set'} onClick={() => setMode('set')}><strong>Set</strong><span>A fixed prebuilt army with a signature passive. No new pieces.</span></button>
         </div>
       </section>
-      <section className="card">
-        <span className="eyebrow">Pick a starting passive</span>
-        <div className="passive-grid one">
-          {choices.map((id) => (
-            <button key={id} className="passive" onClick={() => { setRun(newRun(seed, id)); setScreen({ kind: 'map' }); }}>
-              <strong>{PASSIVES[id].name}</strong><span>{PASSIVES[id].desc}</span>
-            </button>
-          ))}
-        </div>
-      </section>
+      {mode === 'draft' ? (
+        <section className="card">
+          <span className="eyebrow">Pick a starting passive</span>
+          <div className="passive-grid one">
+            {choices.map((id) => (
+              <button key={id} className="passive" onClick={() => begin(newRun(seed, id))}>
+                <strong>{PASSIVES[id].name}</strong><span>{PASSIVES[id].desc}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : (
+        <section className="card">
+          <span className="eyebrow">Pick a set</span>
+          <div className="passive-grid one">
+            {Object.entries(SETS).map(([id, set]) => (
+              <button key={id} className="passive" onClick={() => begin(newSetRun(seed, id))}>
+                <strong>{set.name} <span className="set-army">{set.army.map((k) => PIECE[k]).join('')}</span></strong>
+                <span>{set.desc} Starts with ✦ {PASSIVES[set.passive].name}.</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 
@@ -66,17 +111,42 @@ export function App() {
         if (n.type === 'rest') setScreen({ kind: 'rest' });
         else if (n.type === 'shop') setScreen({ kind: 'shop', items: rollShop(run, rand.current), bought: [] });
         else if (n.type === 'event') setScreen({ kind: 'event', id: rollEvent(rand.current) });
-        else setScreen({ kind: 'fight', node: n });
+        else if (n.type === 'boss') setScreen({ kind: 'boss', node: n });
+        else { fightRef.current = undefined; setScreen({ kind: 'fight', node: n }); }
       }} />
     </main>
   );
 
+  if (screen.kind === 'boss') {
+    const b = tuning.run.boss;
+    const court = screen.node.court ? COURTS[screen.node.court] : null;
+    return (
+      <main className="shell">
+        <header className="title"><span className="eyebrow">Final fight · checkmate to win</span><h1>{b.name}</h1></header>
+        <section className="card"><p>{b.blurb}</p></section>
+        <section className="card">
+          <span className="eyebrow">Boss passives</span>
+          <div className="rules">
+            {b.passives.map((id) => <span key={id} className="chip enemy-chip">☠ {PASSIVES[id].name}: {PASSIVES[id].desc}</span>)}
+            {court && <span className="chip court-chip">{COURT_ICON[court.id]} {court.name}: {court.desc}</span>}
+          </div>
+        </section>
+        {army}
+        <button className="primary" onClick={() => { fightRef.current = undefined; setScreen({ kind: 'fight', node: screen.node }); }}>Face the Regent</button>
+      </main>
+    );
+  }
+
   if (screen.kind === 'fight') {
     const { court, enemyPassives, opts } = fightOpts(screen.node);
-    const initial = newGame(court, run.passives, enemyPassives, { ...opts, playerArmy: run.army });
-    return <Fight key={screen.node.id} initial={initial} seed={seed + screen.node.row * 31 + screen.node.col}
-      title={screen.node.type === 'boss' ? 'Boss · The Iron Regent (preview)' : screen.node.type === 'elite' ? `Row ${screen.node.row + 1} · Elite — capture the king` : `Row ${screen.node.row + 1} · Fight`}
+    const resumed = fightRef.current?.nodeId === screen.node.id ? fightRef.current.game : null;
+    const initial = resumed ?? newGame(court, run.passives, enemyPassives, { ...opts, playerArmy: run.army });
+    const node = screen.node;
+    return <Fight key={node.id} initial={initial} seed={seed + node.row * 31 + node.col + (resumed?.turnNumber ?? 0)}
+      title={node.type === 'boss' ? `Boss · ${tuning.run.boss.name} — checkmate` : node.type === 'elite' ? `Row ${node.row + 1} · Elite — checkmate` : `Row ${node.row + 1} · Fight`}
+      onProgress={(game) => { fightRef.current = { nodeId: node.id, game }; if (game.turn === 'player') persist(run, screen); }}
       onEnd={(won) => {
+        fightRef.current = undefined;
         if (!won) { setRun({ ...run, status: 'lost' }); setScreen({ kind: 'end' }); return; }
         const r = { ...run, fightsWon: run.fightsWon + 1 };
         if (screen.node.type === 'boss') { setRun({ ...r, status: 'won' }); setScreen({ kind: 'end' }); return; }
@@ -220,9 +290,9 @@ export function App() {
 
   return (
     <main className="shell">
-      <header className="title"><span className="eyebrow">{run.status === 'won' ? 'Act 1 cleared' : 'Run over'}</span><h1>{run.status === 'won' ? 'You conquered the Spire' : 'Your king has fallen'}</h1></header>
+      <header className="title"><span className="eyebrow">{run.status === 'won' ? 'Act 1 cleared' : 'Run over'} · {run.mode === 'set' ? 'Set' : 'Draft'}</span><h1>{run.status === 'won' ? 'You conquered the Spire' : 'Your king has fallen'}</h1></header>
       <section className="card"><p>Fights won: {run.fightsWon} · Army: {run.army.length} pieces · Gold: {run.gold}</p></section>
-      <button className="primary" onClick={() => { setRun(null); setSeed(Date.now() % 100000); setScreen({ kind: 'start' }); }}>New run</button>
+      <button className="primary" onClick={() => { clearSave(); setRun(null); setSeed(Date.now() % 100000); setScreen({ kind: 'start' }); }}>New run</button>
     </main>
   );
 }

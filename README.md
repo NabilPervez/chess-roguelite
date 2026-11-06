@@ -1,6 +1,6 @@
 # Gambit Spire (prototype)
 
-A chess roguelite: short 6×6 fights on boards with a "court" rule, plus passives you pick. Current: **Sprint 3** — a full Act 1 run: Draft army, a connected branching map, fights, elites, shops, events, rest sites and a boss preview.
+A chess roguelite: short 6×6 fights on boards with a "court" rule, plus passives you pick. Current: **Sprint 4** — a full Act 1 run: Draft or Set army, a connected branching map, capture-goal fights, checkmate elites, shops, events, rest sites, and a real boss (The Iron Regent: 3 synergistic passives, checkmate to win). Runs autosave to the browser and resume mid-fight.
 
 ## Play
 Pick a starting passive → climb a 15-row map → each fight node shows its court (⛰ Mud, ❄ Ice, ◎ Arena) → capture the objective count within 20 turns → pick 1 of 3 rewards (passive, piece, or gold). ☠ Elites are king hunts against a tougher army with an enemy passive — they reward two passive offers and bonus gold. ◈ Shops sell passives, pieces and passive removal. ? Events offer a two-way choice. ☾ Rest sites promote a pawn or drop a passive. Row 15 is the boss: capture its king. Lose your king and the run is over.
@@ -24,4 +24,4 @@ npm run build   # production build in dist/
 `src/rules` pure engine · `src/passives` one file per court/passive · `src/ai` greedy AI · `src/run` seeded map, run state, rewards · `src/ui` React · `src/data/tuning.json` all tuning values.
 
 ## Prototype rule simplifications
-No check/checkmate (capturing the king ends the fight), no castling, en passant, or pawn double-step; pawns promote to queens.
+Normal fights have no check (capturing the king ends them); elite and boss fights use check and checkmate (stalemate counts against the side that can't move). No castling, en passant, or pawn double-step; pawns promote to queens.

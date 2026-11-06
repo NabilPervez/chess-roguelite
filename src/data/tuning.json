@@ -148,10 +148,14 @@
       ],
       "passives": [
         "phalanx",
+        "fortress",
         "royalGuard"
       ],
       "turnLimit": 40,
-      "court": "mud"
+      "court": "mud",
+      "name": "The Iron Regent",
+      "blurb": "A walled-in king: pawns that lock arms, rooks that never fall at home, and a king that strides out of danger.",
+      "checkmate": true
     },
     "shopChance": 0.07,
     "eventChance": 0.12,
@@ -167,7 +171,8 @@
         "skirmish",
         "outflank"
       ],
-      "goldBonus": 30
+      "goldBonus": 30,
+      "checkmate": true
     },
     "shop": {
       "passivePrice": 60,
@@ -187,6 +192,51 @@
       "shrineGold": 35,
       "gamblerStake": 30,
       "gamblerWinChance": 0.5
+    },
+    "sets": {
+      "cavalry": {
+        "name": "Cavalry",
+        "desc": "Two knights and a fast king.",
+        "army": [
+          "K",
+          "N",
+          "N",
+          "P",
+          "P",
+          "P"
+        ],
+        "passive": "cavalryCharge"
+      },
+      "bastion": {
+        "name": "Bastion",
+        "desc": "A rook wall that holds the line.",
+        "army": [
+          "K",
+          "R",
+          "P",
+          "P",
+          "P",
+          "P"
+        ],
+        "passive": "fortress"
+      },
+      "clergy": {
+        "name": "Clergy",
+        "desc": "Paired bishops with a pawn screen.",
+        "army": [
+          "K",
+          "B",
+          "B",
+          "P",
+          "P",
+          "P"
+        ],
+        "passive": "zealot"
+      }
     }
+  },
+  "save": {
+    "version": 1,
+    "key": "gambit-spire-save"
   }
 }

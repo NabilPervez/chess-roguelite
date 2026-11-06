@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { chooseMove } from '../ai/greedy';
 import { COURTS, PASSIVES, resolveHooks } from '../passives';
 import { applyMove } from '../rules/game';
-import { legalMoves } from '../rules/moves';
+import { inCheck, legalMoves } from '../rules/moves';
 import type { GameState, Move, Sq } from '../rules/types';
 import { mulberry32 } from '../run/rng';
 import { Board } from './Board';
 
-export function Fight({ initial, title, seed, onEnd }: { initial: GameState; title: string; seed: number; onEnd: (won: boolean) => void }) {
+export function Fight({ initial, title, seed, onEnd, onProgress }: { initial: GameState; title: string; seed: number; onEnd: (won: boolean) => void; onProgress?: (g: GameState) => void }) {
   const [game, setGame] = useState(initial);
   const [sel, setSel] = useState<Sq | null>(null);
   const [started] = useState(Date.now());
@@ -26,6 +26,8 @@ export function Fight({ initial, title, seed, onEnd }: { initial: GameState; tit
   }, [game, hooks]);
 
   useEffect(() => { if (game.status !== 'playing') setElapsed(Date.now() - started); }, [game.status]);
+  useEffect(() => { if (game.status === 'playing') onProgress?.(game); }, [game]);
+  const checked = game.checkmate && game.status === 'playing' && inCheck(game, game.turn, hooks);
 
   function tap(sq: Sq) {
     if (game.turn !== 'player' || game.status !== 'playing') return;
@@ -43,9 +45,9 @@ export function Fight({ initial, title, seed, onEnd }: { initial: GameState; tit
       <span className="eyebrow">{title}</span>
       <section className="hud" aria-live="polite">
         <div className="stat"><span className="eyebrow">Objective</span>
-          {kingHunt ? <><b>King</b><small>capture it</small></> : <><b>{Math.min(game.progress, game.capturesToWin)}/{game.capturesToWin}</b><small>captures</small></>}</div>
+          {game.checkmate ? <><b>Mate</b><small>trap the king</small></> : kingHunt ? <><b>King</b><small>capture it</small></> : <><b>{Math.min(game.progress, game.capturesToWin)}/{game.capturesToWin}</b><small>captures</small></>}</div>
         <div className="stat"><span className="eyebrow">Turns left</span><b className={turnsLeft <= 5 ? 'warn' : ''}>{turnsLeft}</b><small>of {game.turnLimit}</small></div>
-        <div className="stat"><span className="eyebrow">To move</span><b>{game.turn === 'player' ? 'You' : 'Enemy'}</b><small>{game.turn === 'enemy' ? 'thinking…' : 'tap a piece'}</small></div>
+        <div className="stat"><span className="eyebrow">To move</span><b>{game.turn === 'player' ? 'You' : 'Enemy'}</b><small className={checked ? 'warn' : ''}>{checked ? 'in check!' : game.turn === 'enemy' ? 'thinking…' : 'tap a piece'}</small></div>
       </section>
       <div className="rules">
         {court && <span className="chip court-chip">{COURT_ICON[court.id]} {court.name}: {court.desc}</span>}

@@ -16,6 +16,8 @@ export interface GameState {
   /** Progress needed to win; Infinity means only a king capture wins. */
   capturesToWin: number;
   turnLimit: number;
+  /** Checkmate fight: moves may not leave your king in check; win by mate. */
+  checkmate?: boolean;
   status: Status;
   endReason?: string;
   court: string | null;

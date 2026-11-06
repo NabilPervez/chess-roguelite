@@ -1,5 +1,5 @@
 import { at, N } from './board';
-import { allLegalMoves, legalMoves, sideHooks } from './moves';
+import { allLegalMoves, inCheck, legalMoves, sideHooks } from './moves';
 import type { GameState, HookSet, Move } from './types';
 
 const name = (k: string) => ({ P: 'Pawn', N: 'Knight', B: 'Bishop', R: 'Rook', Q: 'Queen', K: 'King' })[k] ?? k;
@@ -43,8 +43,11 @@ export function applyMove(state: GameState, move: Move, hooks: HookSet): GameSta
   if (next.status === 'playing' && next.turn === 'player' && turnNumber >= state.turnLimit) {
     next = { ...next, status: 'lost', endReason: `Out of turns (${state.turnLimit}).` };
   }
-  // Stalemate for whoever moves next ends the fight.
+  const check = next.checkmate && next.status === 'playing' && inCheck(next, next.turn, hooks);
+  if (check) next = { ...next, log: [...next.log.slice(0, -1), `${next.log[next.log.length - 1]} — check!`] };
+  // No legal moves for whoever moves next ends the fight (checkmate, or stalemate counts against them).
   if (next.status === 'playing' && allLegalMoves(next, hooks).length === 0) {
+    if (check) return { ...next, status: next.turn === 'player' ? 'lost' : 'won', endReason: next.turn === 'player' ? 'Checkmate. Your king is trapped.' : 'Checkmate! The enemy king is trapped.' };
     next = { ...next, status: next.turn === 'player' ? 'lost' : 'won', endReason: `${next.turn === 'player' ? 'You have' : 'Enemy has'} no legal moves.` };
   }
   return next;

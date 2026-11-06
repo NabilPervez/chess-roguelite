@@ -1,5 +1,5 @@
 import { at, dist, forward, inBounds, N } from './board';
-import type { Board, GameState, Hook, HookSet, Move, Piece, Sq } from './types';
+import type { Board, GameState, Hook, HookSet, Move, Piece, Side, Sq } from './types';
 
 const ORTHO = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const DIAG = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
@@ -60,10 +60,10 @@ export function baseMoves(b: Board, from: Sq): Move[] {
 const allHooks = (h: HookSet): Hook[] => [...(h.court ? [h.court] : []), ...h.player, ...h.enemy];
 export const sideHooks = (h: HookSet, side: Piece['side']) => (side === 'player' ? h.player : h.enemy);
 
-/** Legal moves for the piece at `from`, with court and passive hooks applied. */
-export function legalMoves(state: GameState, from: Sq, hooks: HookSet): Move[] {
+/** Moves for the piece at `from` with hooks applied, ignoring whose turn it is and check. */
+function pseudoMoves(state: GameState, from: Sq, hooks: HookSet): Move[] {
   const p = at(state.board, from);
-  if (!p || p.side !== state.turn || state.status !== 'playing') return [];
+  if (!p) return [];
   const own = sideHooks(hooks, p.side);
   let moves = baseMoves(state.board, from);
   for (const h of own) if (h.onMoveGen) moves = h.onMoveGen({ state, piece: p, from }, moves);
@@ -92,6 +92,39 @@ export function legalMoves(state: GameState, from: Sq, hooks: HookSet): Move[] {
     seen.add(k);
     return true;
   });
+}
+
+/** Board after a move, without bookkeeping (used for check tests). */
+export function previewBoard(b: Board, m: Move): Board {
+  const board = b.map((row) => row.slice());
+  const mover = board[m.from.r][m.from.c]!;
+  board[m.from.r][m.from.c] = null;
+  board[m.to.r][m.to.c] = mover.kind === 'P' && (m.to.r === N - 1 || m.to.r === 0) ? { ...mover, kind: 'Q' } : mover;
+  return board;
+}
+
+/** True if `side`'s king could be captured by the other side right now. */
+export function inCheck(state: GameState, side: Side, hooks: HookSet): boolean {
+  let king: Sq | null = null;
+  for (let r = 0; r < N && !king; r++) for (let c = 0; c < N; c++) {
+    const p = state.board[r][c];
+    if (p?.side === side && p.kind === 'K') { king = { r, c }; break; }
+  }
+  if (!king) return false;
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const p = state.board[r][c];
+    if (p && p.side !== side && pseudoMoves(state, { r, c }, hooks).some((m) => m.to.r === king!.r && m.to.c === king!.c)) return true;
+  }
+  return false;
+}
+
+/** Legal moves for the piece at `from`. In checkmate fights, moves that leave your king in check are removed. */
+export function legalMoves(state: GameState, from: Sq, hooks: HookSet): Move[] {
+  const p = at(state.board, from);
+  if (!p || p.side !== state.turn || state.status !== 'playing') return [];
+  const moves = pseudoMoves(state, from, hooks);
+  if (!state.checkmate) return moves;
+  return moves.filter((m) => !inCheck({ ...state, board: previewBoard(state.board, m) }, p.side, hooks));
 }
 
 export function allLegalMoves(state: GameState, hooks: HookSet): Move[] {

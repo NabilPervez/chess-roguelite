@@ -12,6 +12,10 @@ const value = (k: string) => (tuning.pieceValues as Record<string, number>)[k] ?
 export function chooseMove(state: GameState, hooks: HookSet, rand: () => number): Move | null {
   const moves = allLegalMoves(state, hooks);
   if (!moves.length) return null;
+  // Take any move that ends the fight in our favour (king capture or checkmate).
+  const winner = state.turn === 'enemy' ? 'lost' : 'won';
+  const finishing = moves.find((m) => applyMove(state, m, hooks).status === winner);
+  if (finishing) return finishing;
   const caps = moves.filter((m) => m.capture);
   if (caps.length) {
     caps.sort((a, b) => value(at(state.board, b.to)!.kind) - value(at(state.board, a.to)!.kind));
