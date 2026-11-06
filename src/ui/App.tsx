@@ -16,15 +16,18 @@ import { COURT_ICON, Fight } from './Fight';
 import { MapView } from './MapView';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
 import { SettingsPanel } from './SettingsPanel';
+import { Onboarding } from './Onboarding';
+import { hasOnboarded, markOnboarded } from './onboarding';
+import { Splash } from './Splash';
 import { buildRunShareText, smsHref, whatsappHref } from './share';
 
-type Screen = { kind: 'start' } | { kind: 'map' } | { kind: 'fight'; node: MapNode } | { kind: 'boss'; node: MapNode } | { kind: 'reward'; offers: Reward[] } | { kind: 'rest' } | { kind: 'shop'; items: ShopItem[]; bought: number[]; rerolls: number } | { kind: 'event'; id: string; result?: string } | { kind: 'end' };
+type Screen = { kind: 'splash' } | { kind: 'onboard' } | { kind: 'start' } | { kind: 'map' } | { kind: 'fight'; node: MapNode } | { kind: 'boss'; node: MapNode } | { kind: 'reward'; offers: Reward[] } | { kind: 'rest' } | { kind: 'shop'; items: ShopItem[]; bought: number[]; rerolls: number } | { kind: 'event'; id: string; result?: string } | { kind: 'end' };
 const PIECE: Record<string, string> = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟' };
 const PIECE_NAME: Record<string, string> = { K: 'King', Q: 'Queen', R: 'Rook', B: 'Bishop', N: 'Knight', P: 'Pawn' };
 
 export function App() {
   const [seed, setSeed] = useState(() => Date.now() % 100000);
-  const [screen, setScreen] = useState<Screen>({ kind: 'start' });
+  const [screen, setScreen] = useState<Screen>({ kind: 'splash' });
   const [run, setRun] = useState<RunState | null>(null);
   const [replacing, setReplacing] = useState<Reward | null>(null);
   const [shopPick, setShopPick] = useState<{ item: ShopItem; i: number } | null>(null);
@@ -54,7 +57,7 @@ export function App() {
 
   // Autosave after every step of a live run; a finished run clears the save.
   const persist = (r: RunState | null, sc: Screen) => {
-    if (!r || sc.kind === 'start') return;
+    if (!r || sc.kind === 'start' || sc.kind === 'splash' || sc.kind === 'onboard') return;
     if (r.status !== 'map' || sc.kind === 'end') { clearSave(); return; }
     writeSave({ run: r, screen: sc, fight: sc.kind === 'fight' ? fightRef.current : undefined });
   };
@@ -91,10 +94,14 @@ export function App() {
     </ul>
   );
 
+  if (screen.kind === 'splash') return <Splash onStart={() => setScreen({ kind: hasOnboarded() ? 'start' : 'onboard' })} />;
+  if (screen.kind === 'onboard') return <Onboarding onDone={() => { markOnboarded(); setScreen({ kind: 'start' }); }} />;
+
   if (screen.kind === 'start') return (
     <main className="shell">
       {gear}
       <header className="hero"><span className="eyebrow">Chess roguelite · Act 1</span><h1>Gambit Spire.</h1><p>Climb fifteen rows. Draft pieces and passives. <span>Checkmate the Regent.</span></p></header>
+      <button className="ghost how-to" onClick={() => setScreen({ kind: 'onboard' })}>How to play</button>
       {saved && (
         <section className="card">
           <span className="eyebrow">Run in progress</span>

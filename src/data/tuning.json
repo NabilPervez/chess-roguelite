@@ -400,5 +400,8 @@
       "price": 40,
       "mult": 1.5
     }
+  },
+  "onboarding": {
+    "key": "gambit-spire-onboarded"
   }
 }
