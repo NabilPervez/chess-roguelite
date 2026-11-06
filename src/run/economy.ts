@@ -16,5 +16,5 @@ export function fightPayout(start: GameState, end: GameState): Payout {
   const savedGold = saved * E.perSaved;
   const captureGold = captured * E.perCapture;
   const speedGold = Math.min(E.turnBonusCap, turnsLeft * E.perTurnLeft);
-  return { saved, captured, turnsLeft, savedGold, captureGold, speedGold, tileGold, total: savedGold + captureGold + speedGold + tileGold };
+  return { saved, captured, turnsLeft, savedGold, captureGold, speedGold, tileGold, total: Math.round((savedGold + captureGold + speedGold) * (end.payoutMult ?? 1)) + tileGold };
 }

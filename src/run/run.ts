@@ -4,6 +4,7 @@ import { eloForNode } from '../ai/elo';
 import type { FightOpts } from '../rules/board';
 import type { Kind } from '../rules/types';
 import { findNode, generateMap, type MapNode, type RunMap } from './map';
+import { RELIC_IDS, RELICS, type RelicId } from './relics';
 import { mulberry32, pick, sample, type Rand } from './rng';
 
 export interface RunState {
@@ -18,6 +19,12 @@ export interface RunState {
   fightsWon: number;
   /** Draft grows the army from rewards; Set starts with a fixed army and never gains pieces. */
   mode: RunMode;
+  /** One-shot relics waiting for the next fight. */
+  relics?: string[];
+  /** Army size cap; bought up in shops. */
+  pieceCap?: number;
+  /** Shop item kept for the next shop. */
+  locked?: ShopItem | null;
 }
 
 export type RunMode = 'draft' | 'set';
@@ -39,7 +46,8 @@ export function newSetRun(seed: number, setId: string): RunState {
   return { ...newRun(seed, set.passive), army: [...set.army] as Kind[], mode: 'set' };
 }
 
-const canGainPieces = (run: RunState) => run.mode !== 'set' && run.army.length < tuning.run.pieceCap;
+export const pieceCap = (run: RunState) => run.pieceCap ?? tuning.run.pieceCap;
+export const canGainPieces = (run: RunState) => run.mode !== 'set' && run.army.length < pieceCap(run);
 
 export const startingPassiveChoices = (rand: Rand) => sample(rand, Object.keys(PASSIVES), tuning.run.startPassiveChoices);
 
@@ -107,18 +115,50 @@ export const dropPassive = (run: RunState, id: string): RunState => ({ ...run, p
 export type ShopItem =
   | { type: 'passive'; id: string; price: number }
   | { type: 'piece'; kind: Kind; price: number }
-  | { type: 'remove'; price: number };
+  | { type: 'remove'; price: number }
+  | { type: 'relic'; id: RelicId; price: number };
 
 export function rollShop(run: RunState, rand: Rand): ShopItem[] {
   const s = tuning.run.shop;
   const prices = s.piecePrices as Record<string, number>;
-  const unowned = Object.keys(PASSIVES).filter((id) => !run.passives.includes(id));
-  return [
-    ...sample(rand, unowned, s.passiveOffers).map((id) => ({ type: 'passive' as const, id, price: s.passivePrice })),
+  const lock = run.locked ?? null;
+  const unowned = Object.keys(PASSIVES).filter((id) => !run.passives.includes(id) && !(lock?.type === 'passive' && lock.id === id));
+  const items: ShopItem[] = [
     ...(run.mode === 'set' ? [] : sample(rand, Object.keys(prices), s.pieceOffers)).map((k) => ({ type: 'piece' as const, kind: k as Kind, price: prices[k] })),
+    ...sample(rand, unowned, s.passiveOffers).map((id) => ({ type: 'passive' as const, id, price: s.passivePrice })),
+    ...sample(rand, RELIC_IDS, s.relicOffers).map((id) => ({ type: 'relic' as const, id, price: RELICS[id].price })),
     { type: 'remove', price: s.removePrice },
   ];
+  return lock ? [lock, ...items] : items;
 }
+
+/** Reroll cost rises each time within one shop visit. */
+export const rerollCost = (rerolls: number) => tuning.run.shop.rerollCost + rerolls * tuning.run.shop.rerollStep;
+
+/** Pay to reroll everything except the locked item. */
+export function reroll(run: RunState, rand: Rand, rerolls: number): { run: RunState; items: ShopItem[] } {
+  const cost = rerollCost(rerolls);
+  if (run.gold < cost) throw new Error('Not enough gold');
+  const paid = { ...run, gold: run.gold - cost };
+  return { run: paid, items: rollShop(paid, rand) };
+}
+
+/** Lock (or unlock with null) one item to carry into the next shop. */
+export const lockItem = (run: RunState, item: ShopItem | null): RunState => ({ ...run, locked: item });
+
+/** Price to raise the army cap by one; rises with each upgrade. */
+export const capUpgradePrice = (run: RunState) => tuning.run.shop.capUpgradeBase + (pieceCap(run) - tuning.run.pieceCap) * tuning.run.shop.capUpgradeStep;
+export const canUpgradeCap = (run: RunState) => run.mode !== 'set' && pieceCap(run) < tuning.run.shop.capMax;
+
+export function upgradeCap(run: RunState): RunState {
+  const price = capUpgradePrice(run);
+  if (!canUpgradeCap(run)) throw new Error('Army cap maxed');
+  if (run.gold < price) throw new Error('Not enough gold');
+  return { ...run, gold: run.gold - price, pieceCap: pieceCap(run) + 1 };
+}
+
+/** Relics are used up at the start of the next fight. */
+export const takeRelics = (run: RunState): { run: RunState; relics: string[] } => ({ run: { ...run, relics: [] }, relics: run.relics ?? [] });
 
 /** Buy an item. Throws if unaffordable. `target` is the passive to replace (passive at cap) or remove. */
 export function buy(run: RunState, item: ShopItem, target?: string): RunState {
@@ -128,11 +168,16 @@ export function buy(run: RunState, item: ShopItem, target?: string): RunState {
     if (!target || !run.passives.includes(target)) throw new Error('Choose a passive to remove');
     return dropPassive(paid, target);
   }
+  const unlocked = run.locked && JSON.stringify(run.locked) === JSON.stringify(item) ? { ...paid, locked: null } : paid;
+  if (item.type === 'relic') {
+    if ((run.relics ?? []).length >= tuning.relics.max) throw new Error('Relic slots full');
+    return { ...unlocked, relics: [...(run.relics ?? []), item.id] };
+  }
   if (item.type === 'piece') {
     if (!canGainPieces(run)) throw new Error('Army is full');
-    return { ...paid, army: [...paid.army, item.kind] };
+    return { ...unlocked, army: [...unlocked.army, item.kind] };
   }
-  return applyReward(paid, { type: 'passive', id: item.id }, target);
+  return applyReward(unlocked, { type: 'passive', id: item.id }, target);
 }
 
 // ---------- Events ----------

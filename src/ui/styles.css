@@ -196,3 +196,80 @@ small.warn { font-weight: 600; }
 [data-style="parlor"] .gold, [data-style="parlor"] .price, [data-style="parlor"] .payout dd { color: var(--accent); text-shadow: 2px 2px 0 var(--shadow); }
 [data-style="parlor"] .passive, [data-style="parlor"] .style-card { background: color-mix(in srgb, var(--surface) 70%, #000); border: 3px solid var(--line); }
 .style-grid { grid-template-columns: repeat(2, 1fr); }
+
+/* Sprint 6c: board-first fight + shop layout (portrait first, desktop side panel ≥ 900px). */
+.fight-screen, .shop-screen { max-width: 520px; margin: 0 auto; padding: 12px 16px 20px; display: flex; flex-direction: column; gap: 10px; min-height: 100dvh; box-sizing: border-box; }
+.fight-top { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.fight-top .eyebrow { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pips { display: flex; gap: 3px; } .pips i { width: 8px; height: 6px; background: var(--line); } .pips i.done { background: var(--accent); } .pips i.here { background: var(--text); outline: 2px solid var(--accent); }
+.gold-pill { margin-left: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; color: var(--accent); font-weight: 700; font-size: 18px; white-space: nowrap; }
+.sq-btn { min-width: 44px; min-height: 44px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; font-size: 20px; }
+.enemy-card { display: flex; align-items: center; gap: 10px; background: color-mix(in srgb, var(--danger) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--danger) 55%, var(--line)); border-radius: 12px; padding: 8px 10px; }
+.enemy-face { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 8px; background: var(--danger); color: var(--bg); font-size: 22px; flex: none; }
+.enemy-card > div:first-of-type { flex: 1; min-width: 0; } .enemy-card b { display: block; font-size: 15px; }
+.enemy-card small { color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.intent { text-align: right; } .intent span:last-child { color: var(--danger); font-size: 14px; }
+.fight-screen .hud .stat { padding: 6px 8px; text-align: center; } .fight-screen .hud .stat b { font-size: 20px; } .fight-screen .hud .stat b small { font-size: 13px; color: var(--muted); }
+.fight-screen .hud .stat.you { border-color: var(--accent-2); }
+.board-wrap { display: flex; justify-content: center; }
+.board-wrap .board { width: min(100%, calc(100dvh - 330px)); min-width: 260px; }
+.relic-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.relic { width: 44px; height: 44px; display: grid; place-items: center; flex: none; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--accent); font-size: 18px; padding: 0; }
+.relic.court { background: var(--accent); color: var(--on-accent); } .relic.foe { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 55%, var(--line)); }
+.relic.tile { color: var(--text); } .relic.on { box-shadow: 0 0 0 3px var(--accent-2); }
+.rules-btn { margin-left: auto; min-height: 44px; padding: 0 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; font-weight: 700; }
+.tip { margin: 0; font-size: 13px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; } .tip b { color: var(--text); }
+.rules-panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; max-height: 78dvh; overflow-y: auto; background: var(--surface); border-top: 2px solid var(--line); border-radius: 16px 16px 0 0; padding: 12px 16px 24px; transform: translateY(105%); transition: transform .25s ease; }
+.rules-panel.open { transform: none; }
+.sheet-scrim { position: fixed; inset: 0; z-index: 39; background: var(--scrim); }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; } .sheet-head h2 { margin: 0; font-size: 22px; }
+.x { min-width: 44px; min-height: 44px; background: transparent; border: 1px solid var(--line); border-radius: 10px; }
+.grp { margin: 12px 0 2px; color: var(--accent); }
+.rule { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+.rule .relic { width: 36px; height: 36px; font-size: 15px; } .rule b { display: block; font-size: 15px; } .rule small { color: var(--muted); font-size: 13px; }
+.rules-panel .log { margin-top: 12px; }
+@media (prefers-reduced-motion: reduce) { .rules-panel { transition: none; } }
+
+/* Desktop / landscape: board left, rules always open on the right. */
+@media (min-width: 900px) {
+  .fight-screen { max-width: 1120px; display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-areas: "top top" "board enemy" "board hud" "board side" "relics side" "tip side"; grid-template-rows: auto auto auto 1fr auto auto; column-gap: 24px; align-content: start; }
+  .fight-top { grid-area: top; } .enemy-card { grid-area: enemy; } .fight-screen .hud { grid-area: hud; } .board-wrap { grid-area: board; align-self: start; }
+  .relic-row { grid-area: relics; } .tip { grid-area: tip; }
+  .board-wrap .board { width: min(100%, calc(100dvh - 190px)); }
+  .rules-panel { grid-area: side; position: static; transform: none; max-height: none; border: 1px solid var(--line); border-radius: var(--radius); align-self: start; }
+  .rules-panel .x, .rules-btn, .sheet-scrim { display: none; }
+}
+
+/* Shop */
+.shop-title { margin: 0; flex: 1; text-align: center; font-size: 26px; }
+.shop-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.reroll, .cap-card button { min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--accent-2); color: #fff; font-weight: 700; white-space: nowrap; }
+.reroll span, .cap-card button span { color: var(--accent); margin-left: 4px; }
+.reroll:disabled, .cap-card button:disabled { opacity: .45; cursor: not-allowed; }
+.shop-body { display: flex; flex-direction: column; gap: 14px; }
+.shop-sec .eyebrow { margin-bottom: 8px; }
+.shop-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.shop-grid.passive { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.shop-card { position: relative; }
+.shop-buy { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px 26px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; text-align: center; }
+.shop-buy:disabled { opacity: .5; cursor: not-allowed; }
+.shop-buy .art { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 10px; background: var(--sq-light); color: var(--player); font-size: 30px; }
+.shop-card.passive .art, .shop-card.relic .art, .shop-card.remove .art { background: var(--bg); color: var(--accent); font-size: 22px; width: 40px; height: 40px; }
+.shop-buy b { font-size: 14px; } .shop-buy small { color: var(--muted); font-size: 12px; line-height: 1.25; }
+.price-tag { position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); background: var(--accent); color: var(--on-accent); border-radius: 8px; padding: 2px 10px; font-weight: 700; font-size: 13px; white-space: nowrap; }
+.shop-card.sold .price-tag { background: var(--line); color: var(--muted); }
+.lock { position: absolute; top: -8px; left: -6px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 14px; padding: 0; }
+.lock::before { content: ""; position: absolute; inset: -7px; } /* 44px hit area */
+.lock.on { background: #4caf50; color: #fff; border-color: #fff; }
+.cap-card { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.cap-card div { flex: 1; } .cap-card b { font-size: 20px; }
+.next { margin-top: auto; font-size: 22px; background: #4caf50; color: #fff; text-transform: uppercase; letter-spacing: .04em; }
+@media (min-width: 900px) {
+  .shop-screen { max-width: 960px; }
+  .shop-body { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  .next { align-self: flex-end; min-width: 240px; margin-top: 16px; }
+}
+[data-style="parlor"] .shop-buy, [data-style="parlor"] .relic, [data-style="parlor"] .enemy-card, [data-style="parlor"] .gold-pill, [data-style="parlor"] .cap-card, [data-style="parlor"] .tip, [data-style="parlor"] .rules-btn, [data-style="parlor"] .sq-btn { border: 3px solid var(--line); box-shadow: 0 4px 0 var(--shadow); }
+[data-style="parlor"] .rules-panel { border: 3px solid var(--line); }
+[data-style="parlor"] .shop-buy { background: color-mix(in srgb, var(--surface) 70%, #000); }
+[data-style="parlor"] .enemy-card { background: #2a1820; border-color: var(--danger); }

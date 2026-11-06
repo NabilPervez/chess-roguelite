@@ -3,12 +3,13 @@ import tuning from '../data/tuning.json';
 import { COURTS, PASSIVES, resolveHooks } from '../passives';
 import { newGame } from '../rules/board';
 import { setupFight } from '../rules/game';
+import { applyRelics, RELICS, type RelicId } from '../run/relics';
 import { seedTiles } from '../rules/tiles';
 import type { TileKind } from '../rules/types';
 import type { Kind } from '../rules/types';
 import type { MapNode } from '../run/map';
 import { mulberry32 } from '../run/rng';
-import { applyReward, buy, describeEvent, dropPassive, fightOpts, newRun, newSetRun, promotePawn, resolveEvent, rollEvent, rollRewards, rollShop, SETS, startingPassiveChoices, type Reward, type RunMode, type RunState, type ShopItem } from '../run/run';
+import { applyReward, buy, canGainPieces, canUpgradeCap, capUpgradePrice, lockItem, pieceCap, reroll, rerollCost, upgradeCap, describeEvent, dropPassive, fightOpts, newRun, newSetRun, promotePawn, resolveEvent, rollEvent, rollRewards, rollShop, SETS, startingPassiveChoices, type Reward, type RunMode, type RunState, type ShopItem } from '../run/run';
 import { clearSave, loadSave, writeSave } from '../run/save';
 import type { GameState } from '../rules/types';
 import { COURT_ICON, Fight } from './Fight';
@@ -16,7 +17,7 @@ import { MapView } from './MapView';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
 import { SettingsPanel } from './SettingsPanel';
 
-type Screen = { kind: 'start' } | { kind: 'map' } | { kind: 'fight'; node: MapNode } | { kind: 'boss'; node: MapNode } | { kind: 'reward'; offers: Reward[] } | { kind: 'rest' } | { kind: 'shop'; items: ShopItem[]; bought: number[] } | { kind: 'event'; id: string; result?: string } | { kind: 'end' };
+type Screen = { kind: 'start' } | { kind: 'map' } | { kind: 'fight'; node: MapNode } | { kind: 'boss'; node: MapNode } | { kind: 'reward'; offers: Reward[] } | { kind: 'rest' } | { kind: 'shop'; items: ShopItem[]; bought: number[]; rerolls: number } | { kind: 'event'; id: string; result?: string } | { kind: 'end' };
 const PIECE: Record<string, string> = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟' };
 const PIECE_NAME: Record<string, string> = { K: 'King', Q: 'Queen', R: 'Rook', B: 'Bishop', N: 'Knight', P: 'Pawn' };
 
@@ -133,7 +134,7 @@ export function App() {
       <MapView run={run} onPick={(n) => {
         setRun({ ...run, at: n.id });
         if (n.type === 'rest') setScreen({ kind: 'rest' });
-        else if (n.type === 'shop') setScreen({ kind: 'shop', items: rollShop(run, rand.current), bought: [] });
+        else if (n.type === 'shop') setScreen({ kind: 'shop', items: rollShop(run, rand.current), bought: [], rerolls: 0 });
         else if (n.type === 'event') setScreen({ kind: 'event', id: rollEvent(rand.current) });
         else if (n.type === 'boss') setScreen({ kind: 'boss', node: n });
         else { fightRef.current = undefined; setScreen({ kind: 'fight', node: n }); }
@@ -168,17 +169,17 @@ export function App() {
       const g = newGame(court, run.passives, enemyPassives, { ...opts, playerArmy: run.army });
       const n = screen.node.type === 'fight' ? tuning.tiles.perFight : tuning.tiles.elitePerFight;
       const seeded = seedTiles(g, mulberry32(seed + screen.node.row * 131 + screen.node.col * 17), n, tuning.tiles.pool as TileKind[]);
-      return setupFight(seeded, resolveHooks(seeded));
+      return applyRelics(setupFight(seeded, resolveHooks(seeded)), run.relics ?? []);
     };
     const initial = resumed ?? fresh();
     const node = screen.node;
-    return <Fight key={node.id} initial={initial} seed={seed + node.row * 31 + node.col + (resumed?.turnNumber ?? 0)}
+    return <Fight key={node.id} initial={initial} gold={run.gold} floor={{ row: node.row, rows: tuning.run.rows }} seed={seed + node.row * 31 + node.col + (resumed?.turnNumber ?? 0)}
       title={node.type === 'boss' ? `Boss · ${tuning.run.boss.name} — checkmate` : node.type === 'elite' ? `Row ${node.row + 1} · Elite — checkmate` : `Row ${node.row + 1} · Fight`}
       onProgress={(game) => { fightRef.current = { nodeId: node.id, game }; if (game.turn === 'player') persist(run, screen); }}
       onEnd={(won, earned) => {
         fightRef.current = undefined;
-        if (!won) { setRun({ ...run, status: 'lost' }); setScreen({ kind: 'end' }); return; }
-        const r = { ...run, fightsWon: run.fightsWon + 1, gold: run.gold + earned };
+        if (!won) { setRun({ ...run, relics: [], status: 'lost' }); setScreen({ kind: 'end' }); return; }
+        const r = { ...run, relics: [], fightsWon: run.fightsWon + 1, gold: run.gold + earned };
         if (screen.node.type === 'boss') { setRun({ ...r, status: 'won' }); setScreen({ kind: 'end' }); return; }
         setRun(r); setScreen({ kind: 'reward', offers: rollRewards(r, rand.current, screen.node.type === 'elite') });
       }} />;
@@ -196,7 +197,7 @@ export function App() {
               setRun(applyReward(run, o)); setScreen({ kind: 'map' });
             }}>
               {o.type === 'passive' && <><span className="eyebrow">Passive</span><strong>{PASSIVES[o.id].name}</strong><span>{PASSIVES[o.id].desc}</span></>}
-              {o.type === 'piece' && <><span className="eyebrow">Piece</span><strong>{PIECE[o.kind]} {PIECE_NAME[o.kind]}</strong><span>Joins your army ({run.army.length}/{tuning.run.pieceCap}).</span></>}
+              {o.type === 'piece' && <><span className="eyebrow">Piece</span><strong>{PIECE[o.kind]} {PIECE_NAME[o.kind]}</strong><span>Joins your army ({run.army.length}/{pieceCap(run)}).</span></>}
               {o.type === 'gold' && <><span className="eyebrow">Gold</span><strong>◈ {o.amount}</strong><span>Spend it at ◈ shops.</span></>}
             </button>
           ))}
@@ -219,37 +220,55 @@ export function App() {
   );
 
   if (screen.kind === 'shop') {
-    const { items, bought } = screen;
+    const { items, bought, rerolls } = screen;
     const purchase = (it: ShopItem, i: number, target?: string) => {
       setRun(buy(run, it, target)); setShopPick(null); setScreen({ ...screen, bought: [...bought, i] });
     };
-    const canAfford = (it: ShopItem) => run.gold >= it.price;
-    const blocked = (it: ShopItem) => (it.type === 'piece' && run.army.length >= tuning.run.pieceCap) || (it.type === 'remove' && !run.passives.length);
+    const relicsFull = (run.relics ?? []).length >= tuning.relics.max;
+    const blocked = (it: ShopItem) => (it.type === 'piece' && !canGainPieces(run)) || (it.type === 'remove' && !run.passives.length) || (it.type === 'relic' && relicsFull);
     const needsTarget = (it: ShopItem) => it.type === 'remove' || (it.type === 'passive' && run.passives.length >= tuning.passives.maxActive);
+    const isLocked = (it: ShopItem) => !!run.locked && JSON.stringify(run.locked) === JSON.stringify(it);
+    const cost = rerollCost(rerolls);
+    const card = (it: ShopItem, i: number) => {
+      const sold = bought.includes(i);
+      const off = sold || run.gold < it.price || blocked(it);
+      const head = it.type === 'piece' ? { icon: PIECE[it.kind], name: PIECE_NAME[it.kind], desc: `Joins army (${run.army.length}/${pieceCap(run)})` }
+        : it.type === 'passive' ? { icon: '✦', name: PASSIVES[it.id].name, desc: PASSIVES[it.id].desc }
+        : it.type === 'relic' ? { icon: RELICS[it.id].icon, name: RELICS[it.id].name, desc: RELICS[it.id].desc }
+        : { icon: '✂', name: 'Remove a passive', desc: 'Clear a slot.' };
+      return (
+        <div key={i} className={`shop-card ${it.type}${sold ? ' sold' : ''}`}>
+          <button className="shop-buy" disabled={off} onClick={() => (needsTarget(it) ? setShopPick({ item: it, i }) : purchase(it, i))}
+            aria-label={`Buy ${head.name} for ${it.price} gold`}>
+            <span className="art" aria-hidden="true">{head.icon}</span><b>{head.name}</b><small>{head.desc}</small>
+            <span className="price-tag">{sold ? 'Sold' : `◈ ${it.price}`}</span>
+          </button>
+          {!sold && it.type !== 'remove' && <button className={`lock${isLocked(it) ? ' on' : ''}`} aria-pressed={isLocked(it)} aria-label={isLocked(it) ? `Unlock ${head.name}` : `Lock ${head.name} for the next shop`}
+            onClick={() => setRun(lockItem(run, isLocked(it) ? null : it))}>{isLocked(it) ? '◉' : '○'}</button>}
+        </div>
+      );
+    };
+    const group = (t: ShopItem['type'][], label: string) => {
+      const list = items.map((it, i) => [it, i] as const).filter(([it]) => t.includes(it.type));
+      return list.length ? <section className="shop-sec"><span className="eyebrow">{label}</span><div className={`shop-grid ${t[0]}`}>{list.map(([it, i]) => card(it, i))}</div></section> : null;
+    };
     return (
-      <main className="shell">
-        <header className="title"><span className="eyebrow">Shop</span><h1>The Quartermaster</h1></header>
-        {army}
-        {!shopPick ? (
-          <div className="passive-grid one">
-            {items.map((it, i) => {
-              const sold = bought.includes(i);
-              return (
-                <button key={i} className="passive" disabled={sold || !canAfford(it) || blocked(it)}
-                  onClick={() => (needsTarget(it) ? setShopPick({ item: it, i }) : purchase(it, i))}>
-                  <span className="head">
-                    <span className="eyebrow">{it.type === 'remove' ? 'Service' : it.type === 'piece' ? 'Piece' : 'Passive'}</span>
-                    <span className="price">{sold ? 'Sold' : `◈ ${it.price}`}</span>
-                  </span>
-                  {it.type === 'passive' && <><strong>{PASSIVES[it.id].name}</strong><span>{PASSIVES[it.id].desc}</span></>}
-                  {it.type === 'piece' && <><strong>{PIECE[it.kind]} {PIECE_NAME[it.kind]}</strong><span>Joins your army ({run.army.length}/{tuning.run.pieceCap}).</span></>}
-                  {it.type === 'remove' && <><strong>Remove a passive</strong><span>Clear a slot for something better.</span></>}
-                </button>
-              );
-            })}
-            <button className="ghost" onClick={() => setScreen({ kind: 'map' })}>Leave shop</button>
+      <main className="shop-screen">
+        <header className="fight-top"><button className="sq-btn" aria-label="Leave shop" onClick={() => setScreen({ kind: 'map' })}>‹</button><h1 className="shop-title">Shop</h1><span className="gold-pill">◈ {run.gold}</span></header>
+        <div className="army" aria-label="Your army">{run.army.map((k, i) => <span key={i} title={PIECE_NAME[k]} className="pc player small">{PIECE[k]}</span>)}
+          <span className="gold">{run.army.length}/{pieceCap(run)}{(run.relics ?? []).length ? ` · ${(run.relics ?? []).map((r) => RELICS[r as RelicId].icon).join('')}` : ''}</span></div>
+        {!shopPick ? (<>
+          <div className="shop-bar"><span className="eyebrow">Locked items stay for the next shop</span>
+            <button className="reroll" disabled={run.gold < cost} onClick={() => { const out = reroll(run, rand.current, rerolls); setRun(out.run); setScreen({ kind: 'shop', items: out.items, bought: [], rerolls: rerolls + 1 }); }}>↻ Reroll <span>◈{cost}</span></button></div>
+          <div className="shop-body">
+            {group(['piece'], 'Pieces')}
+            {group(['passive'], 'Passives')}
+            {group(['relic', 'remove'], `Relics · one-shot (${(run.relics ?? []).length}/${tuning.relics.max})`)}
+            {canUpgradeCap(run) && <section className="cap-card"><div><span className="eyebrow">Army size</span><b>{pieceCap(run)} → {pieceCap(run) + 1}</b></div>
+              <button disabled={run.gold < capUpgradePrice(run)} onClick={() => setRun(upgradeCap(run))}>Upgrade <span>◈{capUpgradePrice(run)}</span></button></section>}
           </div>
-        ) : (
+          <button className="primary next" onClick={() => setScreen({ kind: 'map' })}>Next!</button>
+        </>) : (
           <section className="card">
             <span className="eyebrow">{shopPick.item.type === 'remove' ? 'Remove which passive?' : `You can hold ${tuning.passives.maxActive} passives — replace one`}</span>
             <div className="passive-grid one">

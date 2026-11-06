@@ -35,6 +35,8 @@ export interface GameState {
   shielded?: string[];
   /** Gold the player earned during this fight. */
   goldEarned?: number;
+  /** Win payout multiplier from relics (Midas Coin). */
+  payoutMult?: number;
   /** Once-per-fight effects already spent, e.g. "swap:player". */
   used?: string[];
   /** Sides whose next capture is boosted by Vengeance. */

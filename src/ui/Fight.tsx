@@ -12,7 +12,7 @@ import { fightPayout } from '../run/economy';
 import { TILE_INFO } from '../rules/tiles';
 import type { TileKind } from '../rules/types';
 
-export function Fight({ initial, title, seed, onEnd, onProgress }: { initial: GameState; title: string; seed: number; onEnd: (won: boolean, goldEarned: number) => void; onProgress?: (g: GameState) => void }) {
+export function Fight({ initial, title, seed, onEnd, onProgress, gold, floor }: { initial: GameState; title: string; seed: number; gold?: number; floor?: { row: number; rows: number }; onEnd: (won: boolean, goldEarned: number) => void; onProgress?: (g: GameState) => void }) {
   const [game, setGame] = useState(initial);
   const [sel, setSel] = useState<Sq | null>(null);
   const [started] = useState(Date.now());
@@ -46,24 +46,45 @@ export function Fight({ initial, title, seed, onEnd, onProgress }: { initial: Ga
   const court = game.court ? COURTS[game.court] : null;
   const kingHunt = !isFinite(game.capturesToWin);
   const turnsLeft = game.turnLimit - game.turnNumber;
+  const [openRule, setOpenRule] = useState<string | null>(null);
+  const [drawer, setDrawer] = useState(false);
+  const rules = ruleList(game, court);
+  const enemyDesc = game.enemyPassives.length ? game.enemyPassives.map((id) => PASSIVES[id].name).join(' · ') : 'No passives';
+  const intent = game.turn === 'enemy' ? 'thinking…' : checked ? 'check!' : game.checkmate ? 'guarding king' : 'hunting';
+  const tipped = rules.find((r) => r.key === openRule);
   return (
-    <main className="shell">
-      <span className="eyebrow">{title}{game.aiElo ? ` · Enemy ~${game.aiElo} Elo` : ''}</span>
-      <section className="hud" aria-live="polite">
-        <div className="stat"><span className="eyebrow">Objective</span>
-          {game.checkmate ? <><b>Mate</b><small>trap the king</small></> : kingHunt ? <><b>King</b><small>capture it</small></> : <><b>{Math.min(game.progress, game.capturesToWin)}/{game.capturesToWin}</b><small>captures</small></>}</div>
-        <div className="stat"><span className="eyebrow">Turns left</span><b className={turnsLeft <= 5 ? 'warn' : ''}>{turnsLeft}</b><small>of {game.turnLimit}</small></div>
-        <div className="stat"><span className="eyebrow">To move</span><b>{game.turn === 'player' ? 'You' : 'Enemy'}</b><small className={checked ? 'warn' : ''} title={`Enemy rating ${game.aiElo ?? ''}`}>{checked ? 'in check!' : game.turn === 'enemy' ? 'thinking…' : 'tap a piece'}</small></div>
+    <main className="fight-screen">
+      <header className="fight-top">
+        <span className="eyebrow">{title}</span>
+        {floor && <span className="pips" aria-label={`Row ${floor.row + 1} of ${floor.rows}`}>{[...Array(floor.rows).keys()].map((i) => <i key={i} className={i < floor.row ? 'done' : i === floor.row ? 'here' : ''} />)}</span>}
+        {gold !== undefined && <span className="gold-pill">◈ {gold}</span>}
+      </header>
+      <section className="enemy-card" aria-label="Enemy">
+        <span className="enemy-face" aria-hidden="true">♚</span>
+        <div><b>Enemy{game.aiElo ? ` · ~${game.aiElo} Elo` : ''}</b><small>{enemyDesc}</small></div>
+        <div className="intent"><span className="eyebrow">Intent</span><span>{intent}</span></div>
       </section>
-      <div className="rules">
-        {court && <span className="chip court-chip">{COURT_ICON[court.id]} {court.name}: {court.desc}</span>}
-        {game.playerPassives.map((id) => <span key={id} className="chip">✦ {PASSIVES[id].name}: {PASSIVES[id].desc}</span>)}
-        {[...new Set(Object.values(game.tiles ?? {}))].map((t) => <span key={t} className="chip tile-chip">{TILE_INFO[t as TileKind].icon} {TILE_INFO[t as TileKind].name}: {TILE_INFO[t as TileKind].desc}</span>)}
-        {game.enemyPassives.map((id) => <span key={id} className="chip enemy-chip">☠ Enemy {PASSIVES[id].name}: {PASSIVES[id].desc.replace(/\bYour\b/g, 'Their').replace(/\byour\b/g, 'their')}</span>)}
+      <section className="hud" aria-live="polite">
+        <div className="stat"><span className="eyebrow">Goal</span><b>{game.checkmate ? 'Mate' : kingHunt ? 'King' : `${Math.min(game.progress, game.capturesToWin)}/${game.capturesToWin}`}</b></div>
+        <div className="stat"><span className="eyebrow">Turns</span><b className={turnsLeft <= 5 ? 'warn' : ''}>{turnsLeft}<small>/{game.turnLimit}</small></b></div>
+        <div className={`stat${game.turn === 'player' ? ' you' : ''}`}><span className="eyebrow">Move</span><b>{game.turn === 'player' ? (checked ? 'Check!' : 'You') : 'Enemy'}</b></div>
+      </section>
+      <div className="board-wrap"><Board game={game} sel={sel} moves={moves} onTap={tap} /></div>
+      <div className="relic-row" role="toolbar" aria-label="Rules in play">
+        {rules.map((r) => <button key={r.key} className={`relic ${r.kind}${openRule === r.key ? ' on' : ''}`} aria-label={`${r.group}: ${r.name}`} aria-pressed={openRule === r.key} onClick={() => setOpenRule(openRule === r.key ? null : r.key)}>{r.icon}</button>)}
+        <button className="rules-btn" onClick={() => setDrawer(true)}>Rules · {rules.length}</button>
       </div>
-      <Board game={game} sel={sel} moves={moves} onTap={tap} />
-      <p className="legend"><i className="dot move" /> move <i className="dot cap" /> capture <i className="dot tag" /> passive or court</p>
-      <ol className="log">{game.log.slice(-4).reverse().map((l, i) => <li key={i}>{l}</li>)}</ol>
+      {tipped && <p className="tip" role="status"><b>{tipped.name}</b> {tipped.desc}</p>}
+      <aside className={`rules-panel${drawer ? ' open' : ''}`} aria-label="Rules for this fight">
+        <div className="sheet-head"><h2>This fight</h2><button className="x" aria-label="Close rules" onClick={() => setDrawer(false)}>✕</button></div>
+        {['Court', 'Your passives', 'Board tiles', 'Enemy'].map((grp) => {
+          const list = rules.filter((r) => r.group === grp);
+          return list.length ? <div key={grp}><span className="eyebrow grp">{grp}</span>
+            {list.map((r) => <div key={r.key} className="rule"><span className={`relic ${r.kind}`} aria-hidden="true">{r.icon}</span><div><b>{r.name}</b><small>{r.desc}</small></div></div>)}</div> : null;
+        })}
+        <ol className="log">{game.log.slice(-4).reverse().map((l, i) => <li key={i}>{l}</li>)}</ol>
+      </aside>
+      {drawer && <div className="sheet-scrim" onClick={() => setDrawer(false)} />}
       {game.status !== 'playing' && (
         <div className="overlay" role="dialog" aria-modal="true">
           {game.status === 'won' && <CoinBurst />}
@@ -76,6 +97,7 @@ export function Fight({ initial, title, seed, onEnd, onProgress }: { initial: Ga
                 <div><dt>Pieces saved ×{pay.saved}</dt><dd>◈{pay.savedGold}</dd></div>
                 <div><dt>Pieces taken ×{pay.captured}</dt><dd>◈{pay.captureGold}</dd></div>
                 <div><dt>Speed · {pay.turnsLeft} turns spare</dt><dd>◈{pay.speedGold}</dd></div>
+                {(game.payoutMult ?? 1) > 1 && <div><dt>Midas Coin</dt><dd>×{game.payoutMult}</dd></div>}
                 {pay.tileGold > 0 && <div><dt>Gold tiles</dt><dd>◈{pay.tileGold}</dd></div>}
                 <div className="total"><dt>Total</dt><dd>◈{pay.total}</dd></div>
               </dl>
@@ -88,6 +110,18 @@ export function Fight({ initial, title, seed, onEnd, onProgress }: { initial: Ga
       )}
     </main>
   );
+}
+
+interface Rule { key: string; group: string; kind: string; icon: string; name: string; desc: string }
+function ruleList(game: GameState, court: { id: string; name: string; desc: string } | null): Rule[] {
+  const out: Rule[] = [];
+  if (court) out.push({ key: 'court', group: 'Court', kind: 'court', icon: COURT_ICON[court.id] ?? '◎', name: court.name, desc: court.desc });
+  for (const id of game.playerPassives) out.push({ key: `p-${id}`, group: 'Your passives', kind: 'mine', icon: '✦', name: PASSIVES[id].name, desc: PASSIVES[id].desc });
+  const counts: Record<string, number> = {};
+  for (const t of Object.values(game.tiles ?? {})) if (t !== 'hole') counts[t] = (counts[t] ?? 0) + 1;
+  for (const [t, n] of Object.entries(counts)) out.push({ key: `t-${t}`, group: 'Board tiles', kind: 'tile', icon: TILE_INFO[t as TileKind].icon, name: `${TILE_INFO[t as TileKind].name}${n > 1 ? ` ×${n}` : ''}`, desc: TILE_INFO[t as TileKind].desc });
+  for (const id of game.enemyPassives) out.push({ key: `e-${id}`, group: 'Enemy', kind: 'foe', icon: '☠', name: PASSIVES[id].name, desc: PASSIVES[id].desc.replace(/\bYour\b/g, 'Their').replace(/\byour\b/g, 'their') });
+  return out;
 }
 
 export const COURT_ICON: Record<string, string> = { mud: '⛰', ice: '❄', arena: '◎' };

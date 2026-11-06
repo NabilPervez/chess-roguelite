@@ -243,16 +243,22 @@
       "checkmate": true
     },
     "shop": {
-      "passivePrice": 60,
+      "passivePrice": 90,
       "piecePrices": {
-        "N": 40,
-        "B": 40,
-        "R": 60,
-        "Q": 100
+        "N": 60,
+        "B": 60,
+        "R": 90,
+        "Q": 150
       },
-      "removePrice": 40,
+      "removePrice": 60,
       "passiveOffers": 2,
-      "pieceOffers": 2
+      "pieceOffers": 2,
+      "relicOffers": 2,
+      "rerollCost": 10,
+      "rerollStep": 5,
+      "capUpgradeBase": 80,
+      "capUpgradeStep": 40,
+      "capMax": 14
     },
     "events": {
       "smithCost": 50,
@@ -330,6 +336,30 @@
     "coinBurst": {
       "coins": 42,
       "durationMs": 2200
+    }
+  },
+  "relics": {
+    "max": 3,
+    "hourglass": {
+      "name": "Hourglass",
+      "icon": "⧗",
+      "desc": "Next fight: +5 turns.",
+      "price": 35,
+      "turns": 5
+    },
+    "frost": {
+      "name": "Frost Charm",
+      "icon": "❄",
+      "desc": "Next fight: the enemy's best piece sits out its first 2 turns.",
+      "price": 45,
+      "turns": 2
+    },
+    "midas": {
+      "name": "Midas Coin",
+      "icon": "◈",
+      "desc": "Next win pays +50% gold.",
+      "price": 40,
+      "mult": 1.5
     }
   }
 }
