@@ -360,3 +360,8 @@ small.warn { font-weight: 600; }
 [data-style="parlor"] .reward, [data-style="parlor"] .kit, [data-style="parlor"] .legend-box, [data-style="parlor"] .stats { border: 3px solid var(--line); box-shadow: 0 4px 0 var(--shadow); }
 [data-style="parlor"] .reward { background: color-mix(in srgb, var(--surface) 70%, #000); }
 .map-screen { overflow-x: clip; } /* SVG seams can report wider than the map on narrow phones */
+
+/* Share (end screen) */
+.share-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+.share-btn { display: flex; align-items: center; justify-content: center; min-height: 48px; border-radius: 10px; font-weight: 700; text-decoration: none; color: var(--text, inherit); border: 1px solid currentColor; }
+.share-btn.wa { background: #25d366; color: #0b1f12; border-color: #25d366; }

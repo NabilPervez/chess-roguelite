@@ -16,6 +16,7 @@ import { COURT_ICON, Fight } from './Fight';
 import { MapView } from './MapView';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
 import { SettingsPanel } from './SettingsPanel';
+import { buildRunShareText, smsHref, whatsappHref } from './share';
 
 type Screen = { kind: 'start' } | { kind: 'map' } | { kind: 'fight'; node: MapNode } | { kind: 'boss'; node: MapNode } | { kind: 'reward'; offers: Reward[] } | { kind: 'rest' } | { kind: 'shop'; items: ShopItem[]; bought: number[]; rerolls: number } | { kind: 'event'; id: string; result?: string } | { kind: 'end' };
 const PIECE: Record<string, string> = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟' };
@@ -375,6 +376,17 @@ export function App() {
       </dl>
       <section><span className="eyebrow">Final army</span>{army}</section>
       {passiveChips && <section><span className="eyebrow">Passives</span>{passiveChips}</section>}
+      {(() => {
+        const text = buildRunShareText({ won: run.status === 'won', row: run.at ? Number(run.at.split('-')[0]) + 1 : 1, rows: tuning.run.rows, fightsWon: run.fightsWon, gold: run.gold, passives: run.passives.map((id) => PASSIVES[id].name) });
+        return (
+          <section className="share" aria-label="Share your run"><span className="eyebrow">Share your run</span>
+            <div className="share-row">
+              <a className="share-btn" href={smsHref(text)}>Text</a>
+              <a className="share-btn wa" href={whatsappHref(text)} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+            </div>
+          </section>
+        );
+      })()}
       <button className="primary" onClick={() => { clearSave(); setRun(null); setSeed(Date.now() % 100000); setScreen({ kind: 'start' }); }}>New run</button>
     </main>
   );
