@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { chooseMoveElo } from '../ai/engine';
 import tuning from '../data/tuning.json';
 import { COURTS, PASSIVES, resolveHooks } from '../passives';
-import { applyMove } from '../rules/game';
+import { applyMove, objectiveLabel } from '../rules/game';
 import { inCheck, legalMoves } from '../rules/moves';
 import type { GameState, Move, Sq } from '../rules/types';
 import { mulberry32 } from '../run/rng';
@@ -11,6 +11,9 @@ import { CoinBurst } from './CoinBurst';
 import { fightPayout } from '../run/economy';
 import { TILE_INFO } from '../rules/tiles';
 import type { TileKind } from '../rules/types';
+
+const GOAL_DESC: Record<string, string> = { mate: 'Trap the enemy king with no escape.', regicide: 'Capture the enemy king outright. No check rules.', captures: 'Take enemy pieces. Some passives make captures count extra.', material: 'Capture pieces worth this much: pawn 1, knight/bishop 3, rook 5, queen 9.', officers: 'Capture knights, bishops, rooks or queens. Pawns don\'t count.', breakthrough: 'Get one of your pawns to the far rank.' };
+const GOAL_NAME: Record<string, string> = { mate: 'Checkmate', regicide: 'Take the king', captures: 'Captures', material: 'Material', officers: 'Officers', breakthrough: 'Breakthrough' };
 
 export function Fight({ initial, title, seed, onEnd, onProgress, gold, floor }: { initial: GameState; title: string; seed: number; gold?: number; floor?: { row: number; rows: number }; onEnd: (won: boolean, goldEarned: number) => void; onProgress?: (g: GameState) => void }) {
   const [game, setGame] = useState(initial);
@@ -65,7 +68,7 @@ export function Fight({ initial, title, seed, onEnd, onProgress, gold, floor }: 
         <div className="intent"><span className="eyebrow">Intent</span><span>{intent}</span></div>
       </section>
       <section className="hud" aria-live="polite">
-        <div className="stat"><span className="eyebrow">Goal</span><b>{game.checkmate ? 'Mate' : kingHunt ? 'King' : `${Math.min(game.progress, game.capturesToWin)}/${game.capturesToWin}`}</b></div>
+        <div className="stat" title={`Goal: ${objectiveLabel(game)}`}><span className="eyebrow">{GOAL_NAME[game.checkmate ? 'mate' : kingHunt ? 'regicide' : game.objective ?? 'captures']}</span><b>{game.checkmate ? 'Mate' : kingHunt ? 'King' : game.objective === 'breakthrough' ? 'Promote' : `${Math.min(game.progress, game.capturesToWin)}/${game.capturesToWin}`}</b></div>
         <div className="stat"><span className="eyebrow">Turns</span><b className={turnsLeft <= 5 ? 'warn' : ''}>{turnsLeft}<small>/{game.turnLimit}</small></b></div>
         <div className={`stat${game.turn === 'player' ? ' you' : ''}`}><span className="eyebrow">Move</span><b>{game.turn === 'player' ? (checked ? 'Check!' : 'You') : 'Enemy'}</b></div>
       </section>
@@ -115,6 +118,7 @@ export function Fight({ initial, title, seed, onEnd, onProgress, gold, floor }: 
 interface Rule { key: string; group: string; kind: string; icon: string; name: string; desc: string }
 function ruleList(game: GameState, court: { id: string; name: string; desc: string } | null): Rule[] {
   const out: Rule[] = [];
+  out.push({ key: 'goal', group: 'Goal', kind: 'tile', icon: '⚑', name: `Win: ${objectiveLabel(game)}`, desc: GOAL_DESC[game.checkmate ? 'mate' : !isFinite(game.capturesToWin) ? 'regicide' : game.objective ?? 'captures'] + ` Lose if your king falls or turns run out.` });
   if (court) out.push({ key: 'court', group: 'Court', kind: 'court', icon: COURT_ICON[court.id] ?? '◎', name: court.name, desc: court.desc });
   for (const id of game.playerPassives) out.push({ key: `p-${id}`, group: 'Your passives', kind: 'mine', icon: '✦', name: PASSIVES[id].name, desc: PASSIVES[id].desc });
   const counts: Record<string, number> = {};

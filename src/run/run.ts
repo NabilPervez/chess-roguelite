@@ -2,7 +2,7 @@ import tuning from '../data/tuning.json';
 import { PASSIVES } from '../passives';
 import { eloForNode } from '../ai/elo';
 import type { FightOpts } from '../rules/board';
-import type { Kind } from '../rules/types';
+import type { Kind, ObjectiveKind } from '../rules/types';
 import { findNode, generateMap, type MapNode, type RunMap } from './map';
 import { RELIC_IDS, RELICS, type RelicId } from './relics';
 import { mulberry32, pick, sample, type Rand } from './rng';
@@ -57,7 +57,7 @@ export function reachable(run: RunState): MapNode[] {
   return findNode(run.map, run.at).next.map((id) => findNode(run.map, id));
 }
 
-export function fightOpts(node: MapNode): { court: string | null; enemyPassives: string[]; opts: FightOpts } {
+export function fightOpts(node: MapNode, army?: Kind[]): { court: string | null; enemyPassives: string[]; opts: FightOpts } {
   if (node.type === 'boss') {
     const b = tuning.run.boss;
     return { court: node.court, enemyPassives: b.passives, opts: { enemyArmy: b.army as Kind[], capturesToWin: Infinity, turnLimit: b.turnLimit, checkmate: b.checkmate, aiElo: eloForNode(node.row, 'boss') } };
@@ -71,8 +71,32 @@ export function fightOpts(node: MapNode): { court: string | null; enemyPassives:
     return { court: node.court, enemyPassives: [passive], opts: { enemyArmy, capturesToWin: Infinity, turnLimit: e.turnLimit, checkmate: e.checkmate, aiElo: eloForNode(node.row, 'elite') } };
   }
   const enemyArmy = tiers[Math.min(tiers.length - 1, base)] as Kind[];
-  return { court: node.court, enemyPassives: [], opts: { enemyArmy, capturesToWin: Math.min(tuning.objective.capturesToWin, enemyArmy.length - 1), aiElo: eloForNode(node.row, 'fight') } };
+  const obj = nodeObjective(node, enemyArmy, army);
+  return { court: node.court, enemyPassives: [], opts: { enemyArmy, ...obj, aiElo: eloForNode(node.row, 'fight') } };
 }
+
+/** Normal fights rotate objectives by map position; harder ones unlock higher up and targets scale with the row. */
+export function nodeObjective(node: Pick<MapNode, 'row' | 'col'>, enemyArmy: Kind[], army: Kind[] = ['P']): { objective: ObjectiveKind; capturesToWin: number; turnLimit: number } {
+  const O = tuning.objective;
+  const unlock = O.unlockRow as Record<string, number>;
+  const pool = (O.pool as ObjectiveKind[]).filter((k) => node.row >= unlock[k] && (k !== 'breakthrough' || army.includes('P')));
+  const kind = pool[(node.row * 5 + node.col * 3) % pool.length];
+  const vals = O.materialValues as Record<string, number>;
+  const turnLimit = O.turnLimit;
+  const step = (c: { base: number; perRows: number }) => c.base + Math.floor(node.row / c.perRows);
+  switch (kind) {
+    case 'material': return { objective: kind, turnLimit, capturesToWin: Math.min(step(O.material), enemyArmy.reduce((n, k) => n + (vals[k] ?? 0), 0)) };
+    case 'officers': {
+      const officers = enemyArmy.filter((k) => k !== 'K' && k !== 'P').length;
+      if (officers) return { objective: kind, turnLimit, capturesToWin: Math.min(step(O.officers), officers) };
+      return { objective: 'captures', turnLimit, capturesToWin: Math.min(step(O.captures), enemyArmy.length - 1) };
+    }
+    case 'breakthrough': return { objective: kind, turnLimit, capturesToWin: O.breakthrough.target };
+    case 'regicide': return { objective: kind, turnLimit: turnLimit + O.regicide.turnBonus, capturesToWin: Infinity };
+    default: return { objective: 'captures', turnLimit, capturesToWin: Math.min(step(O.captures), enemyArmy.length - 1) };
+  }
+}
+
 
 /** Three distinct reward offers. Elites offer passives first and bonus gold. */
 export function rollRewards(run: RunState, rand: Rand, elite = false): Reward[] {

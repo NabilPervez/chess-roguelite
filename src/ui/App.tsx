@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import tuning from '../data/tuning.json';
 import { COURTS, PASSIVES, resolveHooks } from '../passives';
 import { newGame } from '../rules/board';
@@ -58,6 +58,8 @@ export function App() {
     writeSave({ run: r, screen: sc, fight: sc.kind === 'fight' ? fightRef.current : undefined });
   };
   useEffect(() => persist(run, screen), [run, screen]);
+  // Every screen opens at the top (map scrolls itself to the open row).
+  useEffect(() => { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; if (screen.kind !== 'map') window.scrollTo(0, 0); }, [screen.kind]);
 
   const begin = (r: RunState) => { fightRef.current = undefined; setRun(r); setScreen({ kind: 'map' }); };
   const resume = () => {
@@ -67,17 +69,31 @@ export function App() {
     setSeed(saved.run.seed); setRun(saved.run); setScreen(saved.screen as Screen); setSaved(null);
   };
 
+  const top = (eyebrow: string, title: string, extra?: ReactNode) => (
+    <header className="screen-top">
+      <div className="screen-head"><span className="eyebrow">{eyebrow}</span><h1>{title}</h1></div>
+      {extra}
+      {run && <span className="gold-pill">◈ {run.gold}</span>}
+      <button className="sq-btn" aria-label="Settings" onClick={() => setShowSettings(true)}>⚙</button>
+      {showSettings && <SettingsPanel value={settings} prefersDark={prefersDark} onChange={setSettings} onClose={() => setShowSettings(false)} />}
+    </header>
+  );
   const army = run && (
     <div className="army" aria-label="Your army">
-      {run.army.map((k, i) => <span key={i} title={PIECE_NAME[k]} className="pc player small">{PIECE[k]}</span>)}
-      <span className="gold">◈ {run.gold}</span>
+      <span className="army-pcs">{run.army.map((k, i) => <span key={i} title={PIECE_NAME[k]} className="pc player small">{PIECE[k]}</span>)}</span>
+      <span className="army-meta">{run.army.length}/{pieceCap(run)}</span>
     </div>
+  );
+  const passiveChips = run && run.passives.length > 0 && (
+    <ul className="kit" aria-label="Your passives">
+      {run.passives.map((id) => <li key={id}><span className="kit-ic" aria-hidden="true">✦</span><span><b>{PASSIVES[id].name}</b><small>{PASSIVES[id].desc}</small></span></li>)}
+    </ul>
   );
 
   if (screen.kind === 'start') return (
     <main className="shell">
       {gear}
-      <header className="title"><span className="eyebrow">New run · Act 1</span><h1>Gambit Spire</h1></header>
+      <header className="hero"><span className="eyebrow">Chess roguelite · Act 1</span><h1>Gambit Spire.</h1><p>Climb fifteen rows. Draft pieces and passives. <span>Checkmate the Regent.</span></p></header>
       {saved && (
         <section className="card">
           <span className="eyebrow">Run in progress</span>
@@ -101,7 +117,7 @@ export function App() {
           <div className="passive-grid one">
             {choices.map((id) => (
               <button key={id} className="passive" onClick={() => begin(newRun(seed, id))}>
-                <strong>{PASSIVES[id].name}</strong><span>{PASSIVES[id].desc}</span>
+                <strong><i className="ic" aria-hidden="true">✦</i>{PASSIVES[id].name}</strong><span>{PASSIVES[id].desc}</span>
               </button>
             ))}
           </div>
@@ -125,12 +141,18 @@ export function App() {
   if (!run) return null;
 
   if (screen.kind === 'map') return (
-    <main className="shell">
-      {gear}
-      <header className="title"><span className="eyebrow">Act 1 · choose your path</span><h1>The Spire</h1></header>
+    <main className="shell map-screen">
+      {top(`Act 1 · row ${run.at ? Number(run.at.split('-')[0]) + 2 : 1} of ${tuning.run.rows}`, 'The Spire')}
       {army}
-      <div className="rules">{run.passives.map((id) => <span key={id} className="chip">✦ {PASSIVES[id].name}: {PASSIVES[id].desc}</span>)}</div>
-      <p className="legend">{Object.values(COURTS).map((c) => <span key={c.id} title={c.desc}>{COURT_ICON[c.id]} {c.name}</span>)}<span>☠ Elite</span><span>◈ Shop</span><span>? Event</span><span>☾ Rest</span><span>♛ Boss</span></p>
+      {passiveChips}
+      <details className="legend-box"><summary>Map key</summary>
+        <ul className="legend">{Object.values(COURTS).map((c) => <li key={c.id}><i>{COURT_ICON[c.id]}</i><span><b>{c.name}</b><small>{c.desc}</small></span></li>)}
+          <li><i className="d">☠</i><span><b>Elite</b><small>Checkmate a stronger army with a passive.</small></span></li>
+          <li><i className="a">◈</i><span><b>Shop</b><small>Spend gold on pieces, passives and relics.</small></span></li>
+          <li><i>?</i><span><b>Event</b><small>A choice with a risk.</small></span></li>
+          <li><i>☾</i><span><b>Rest</b><small>Promote a pawn or drop a passive.</small></span></li>
+          <li><i className="d">♛</i><span><b>Boss</b><small>The Iron Regent. Checkmate to win.</small></span></li></ul>
+      </details>
       <MapView run={run} onPick={(n) => {
         setRun({ ...run, at: n.id });
         if (n.type === 'rest') setScreen({ kind: 'rest' });
@@ -147,7 +169,7 @@ export function App() {
     const court = screen.node.court ? COURTS[screen.node.court] : null;
     return (
       <main className="shell">
-        <header className="title"><span className="eyebrow">Final fight · checkmate to win</span><h1>{b.name}</h1></header>
+        {top('Final fight · checkmate to win', b.name)}
         <section className="card"><p>{b.blurb}</p></section>
         <section className="card">
           <span className="eyebrow">Boss passives</span>
@@ -163,7 +185,7 @@ export function App() {
   }
 
   if (screen.kind === 'fight') {
-    const { court, enemyPassives, opts } = fightOpts(screen.node);
+    const { court, enemyPassives, opts } = fightOpts(screen.node, run.army);
     const resumed = fightRef.current?.nodeId === screen.node.id ? fightRef.current.game : null;
     const fresh = () => {
       const g = newGame(court, run.passives, enemyPassives, { ...opts, playerArmy: run.army });
@@ -187,23 +209,26 @@ export function App() {
 
   if (screen.kind === 'reward') return (
     <main className="shell">
-      <header className="title"><span className="eyebrow">Victory</span><h1>Choose a reward</h1></header>
+      {top('Victory', 'Choose a reward.')}
       {army}
-      {!replacing ? (
-        <div className="passive-grid one">
+      {!replacing ? (<>
+        <div className="reward-grid">
           {screen.offers.map((o, i) => (
-            <button key={i} className="passive" onClick={() => {
+            <button key={i} className={`reward r-${o.type}`} onClick={() => {
               if (o.type === 'passive' && run.passives.length >= tuning.passives.maxActive) { setReplacing(o); return; }
               setRun(applyReward(run, o)); setScreen({ kind: 'map' });
             }}>
-              {o.type === 'passive' && <><span className="eyebrow">Passive</span><strong>{PASSIVES[o.id].name}</strong><span>{PASSIVES[o.id].desc}</span></>}
-              {o.type === 'piece' && <><span className="eyebrow">Piece</span><strong>{PIECE[o.kind]} {PIECE_NAME[o.kind]}</strong><span>Joins your army ({run.army.length}/{pieceCap(run)}).</span></>}
-              {o.type === 'gold' && <><span className="eyebrow">Gold</span><strong>◈ {o.amount}</strong><span>Spend it at ◈ shops.</span></>}
+              <span className="art" aria-hidden="true">{o.type === 'passive' ? '✦' : o.type === 'piece' ? PIECE[o.kind] : '◈'}</span>
+              <span className="reward-body">
+                <span className="eyebrow">{o.type === 'passive' ? 'Passive' : o.type === 'piece' ? 'Piece' : 'Gold'}</span>
+                <strong>{o.type === 'passive' ? PASSIVES[o.id].name : o.type === 'piece' ? PIECE_NAME[o.kind] : `+${o.amount} gold`}</strong>
+                <small>{o.type === 'passive' ? PASSIVES[o.id].desc : o.type === 'piece' ? `Joins your army (${run.army.length}/${pieceCap(run)}).` : `You'll have ◈ ${run.gold + o.amount} for the next shop.`}</small>
+              </span>
             </button>
           ))}
-          <button className="ghost" onClick={() => setScreen({ kind: 'map' })}>Skip</button>
         </div>
-      ) : (
+        <button className="ghost skip" onClick={() => setScreen({ kind: 'map' })}>Skip reward</button>
+      </>) : (
         <section className="card">
           <span className="eyebrow">You can hold {tuning.passives.maxActive} passives — replace one</span>
           <div className="passive-grid one">
@@ -289,7 +314,7 @@ export function App() {
     const ev = describeEvent(screen.id, run);
     return (
       <main className="shell">
-        <header className="title"><span className="eyebrow">Event</span><h1>{ev.title}</h1></header>
+        {top('Event', ev.title)}
         {army}
         <section className="card"><p>{ev.text}</p></section>
         {screen.result ? (
@@ -316,7 +341,7 @@ export function App() {
     const done = (r: RunState) => { setRun(r); setScreen({ kind: 'map' }); };
     return (
       <main className="shell">
-        <header className="title"><span className="eyebrow">Rest site</span><h1>Catch your breath</h1></header>
+        {top('Rest site', 'Catch your breath.')}
         {army}
         <section className="card">
           <span className="eyebrow">Promote a pawn</span>
@@ -338,9 +363,18 @@ export function App() {
   }
 
   return (
-    <main className="shell">
-      <header className="title"><span className="eyebrow">{run.status === 'won' ? 'Act 1 cleared' : 'Run over'} · {run.mode === 'set' ? 'Set' : 'Draft'}</span><h1>{run.status === 'won' ? 'You conquered the Spire' : 'Your king has fallen'}</h1></header>
-      <section className="card"><p>Fights won: {run.fightsWon} · Army: {run.army.length} pieces · Gold: {run.gold}</p></section>
+    <main className={`shell end ${run.status}`}>
+      <header className="hero"><span className="eyebrow">{run.status === 'won' ? 'Act 1 cleared' : 'Run over'} · {run.mode === 'set' ? 'Set' : 'Draft'} run</span>
+        <h1>{run.status === 'won' ? 'The Spire is yours.' : 'Your king has fallen.'}</h1>
+        <p>{run.status === 'won' ? 'The Iron Regent is checkmated.' : `You reached row ${run.at ? Number(run.at.split('-')[0]) + 1 : 1} of ${tuning.run.rows}.`} <span>{run.status === 'won' ? 'Try a set run next.' : 'Every run teaches the map.'}</span></p></header>
+      <dl className="stats">
+        <div><dt>Fights won</dt><dd>{run.fightsWon}</dd></div>
+        <div><dt>Row reached</dt><dd>{run.at ? Number(run.at.split('-')[0]) + 1 : 1}<small>/{tuning.run.rows}</small></dd></div>
+        <div><dt>Army</dt><dd>{run.army.length}</dd></div>
+        <div><dt>Gold</dt><dd className="g">◈ {run.gold}</dd></div>
+      </dl>
+      <section><span className="eyebrow">Final army</span>{army}</section>
+      {passiveChips && <section><span className="eyebrow">Passives</span>{passiveChips}</section>}
       <button className="primary" onClick={() => { clearSave(); setRun(null); setSeed(Date.now() % 100000); setScreen({ kind: 'start' }); }}>New run</button>
     </main>
   );

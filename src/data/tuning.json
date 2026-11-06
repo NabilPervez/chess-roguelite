@@ -2,7 +2,46 @@
   "boardSize": 6,
   "objective": {
     "capturesToWin": 4,
-    "turnLimit": 20
+    "turnLimit": 20,
+    "pool": [
+      "captures",
+      "material",
+      "officers",
+      "breakthrough",
+      "regicide"
+    ],
+    "unlockRow": {
+      "captures": 0,
+      "material": 0,
+      "officers": 2,
+      "breakthrough": 3,
+      "regicide": 5
+    },
+    "captures": {
+      "base": 4,
+      "perRows": 5
+    },
+    "material": {
+      "base": 6,
+      "perRows": 3
+    },
+    "officers": {
+      "base": 2,
+      "perRows": 7
+    },
+    "breakthrough": {
+      "target": 1
+    },
+    "regicide": {
+      "turnBonus": 4
+    },
+    "materialValues": {
+      "P": 1,
+      "N": 3,
+      "B": 3,
+      "R": 5,
+      "Q": 9
+    }
   },
   "courts": {
     "mud": {
@@ -342,21 +381,21 @@
     "max": 3,
     "hourglass": {
       "name": "Hourglass",
-      "icon": "⧗",
+      "icon": "\u29d7",
       "desc": "Next fight: +5 turns.",
       "price": 35,
       "turns": 5
     },
     "frost": {
       "name": "Frost Charm",
-      "icon": "❄",
+      "icon": "\u2744",
       "desc": "Next fight: the enemy's best piece sits out its first 2 turns.",
       "price": 45,
       "turns": 2
     },
     "midas": {
       "name": "Midas Coin",
-      "icon": "◈",
+      "icon": "\u25c8",
       "desc": "Next win pays +50% gold.",
       "price": 40,
       "mult": 1.5

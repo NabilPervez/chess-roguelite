@@ -5,6 +5,7 @@ export interface Piece { id: string; side: Side; kind: Kind; moved: boolean }
 export type Board = (Piece | null)[][];
 export interface Move { from: Sq; to: Sq; capture: boolean; tag?: string }
 export type Status = 'playing' | 'won' | 'lost';
+export type ObjectiveKind = 'captures' | 'material' | 'officers' | 'breakthrough' | 'regicide';
 export type TileKind = 'protective' | 'trap' | 'phantom' | 'crumbling' | 'gold' | 'hole';
 
 export interface GameState {
@@ -16,6 +17,8 @@ export interface GameState {
   progress: number;
   /** Progress needed to win; Infinity means only a king capture wins. */
   capturesToWin: number;
+  /** Which objective normal fights use; defaults to captures. */
+  objective?: ObjectiveKind;
   turnLimit: number;
   /** Checkmate fight: moves may not leave your king in check; win by mate. */
   checkmate?: boolean;

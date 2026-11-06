@@ -273,3 +273,90 @@ small.warn { font-weight: 600; }
 [data-style="parlor"] .rules-panel { border: 3px solid var(--line); }
 [data-style="parlor"] .shop-buy { background: color-mix(in srgb, var(--surface) 70%, #000); }
 [data-style="parlor"] .enemy-card { background: #2a1820; border-color: var(--danger); }
+
+/* Sprint 7 (Nabil, 2026-11-06): out-of-fight screens match the board-first fight/shop look.
+   Quiet Precision rules: one closed type scale (32/24/22/18/16/14/13), hairlines over boxes, accent only where it means something. */
+.shell { gap: 16px; padding-top: 12px; }
+.shell > * { min-width: 0; }
+.screen-top { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.screen-head { flex: 1; min-width: 0; }
+.screen-head h1 { margin: 2px 0 0; font-size: 24px; font-weight: 600; letter-spacing: -0.027em; line-height: 1.15; text-wrap: balance; }
+.screen-top .gold-pill { margin-left: 0; font-size: 16px; padding: 8px 10px; }
+.hero { padding: 24px 0 8px; }
+.hero h1 { margin: 6px 0 8px; font-size: 32px; font-weight: 600; letter-spacing: -0.027em; line-height: 1.1; text-wrap: balance; }
+.hero p { margin: 0; max-width: 34ch; font-size: 16px; text-wrap: pretty; } .hero p span { color: var(--muted); }
+.topbar + .hero { padding-top: 0; }
+.card { padding: 14px; }
+.passive { border-radius: var(--radius); padding: 12px; transition: border-color .2s, background .2s; }
+.passive strong { font-weight: 600; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+.passive .ic { font-style: normal; color: var(--accent-2); }
+.passive:not(:disabled):hover { border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); }
+.passive:not(:disabled):active, .reward:active, .node.open:active { transform: scale(.98); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.primary { font-size: 16px; min-height: 52px; }
+
+/* Army strip */
+.army { gap: 8px; padding: 6px 12px; }
+.army-pcs { display: flex; flex-wrap: wrap; gap: 2px; flex: 1; min-width: 0; }
+.army-meta { color: var(--muted); font-size: 13px; font-weight: 500; }
+
+/* Passive kit: compact two-line rows instead of long chips */
+.kit { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.kit li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; } .kit li + li { border-top: 1px solid var(--line); }
+.kit-ic { color: var(--accent-2); line-height: 1.4; }
+.kit b { display: block; font-size: 14px; font-weight: 600; } .kit small { color: var(--muted); font-size: 13px; }
+
+/* Map key folds away */
+.legend-box { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.legend-box summary { min-height: 44px; display: flex; align-items: center; padding: 0 12px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--muted); list-style: none; }
+.legend-box summary::after { content: "+"; margin-left: auto; font-size: 18px; } .legend-box[open] summary::after { content: "−"; }
+.legend-box summary::-webkit-details-marker { display: none; }
+.legend-box .legend { list-style: none; margin: 0; padding: 0 12px 8px; display: grid; gap: 0; }
+.legend-box .legend li { display: flex; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.legend-box .legend i { font-style: normal; width: 24px; text-align: center; } .legend i.d { color: var(--danger); } .legend i.a { color: var(--accent); }
+.legend-box .legend b { display: block; font-size: 14px; font-weight: 600; color: var(--text); } .legend-box .legend small { font-size: 13px; }
+
+/* Map: round tokens, quieter seams, the open row glows */
+.map-screen .map { margin: 8px 0 24px 24px; }
+.map-lines line { stroke-width: 1.5; stroke-dasharray: 2 5; }
+.node { width: 52px; height: 52px; min-height: 0; border-radius: 50%; padding: 0; gap: 0; }
+.node-icon { font-size: 20px; }
+.node-label { position: absolute; top: calc(100% + 3px); font-size: 13px; line-height: 1; color: var(--muted); }
+.node.past { opacity: .3; } .node.past .node-label, .node:disabled:not(.here) .node-label { opacity: .7; }
+.node.open { border: 2px solid var(--accent); color: var(--text); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); animation: node-pulse 2.4s cubic-bezier(.16,1,.3,1) infinite; }
+.node.open .node-label { color: var(--text); font-weight: 500; }
+.node.here { border: 2px solid var(--accent-2); background: color-mix(in srgb, var(--accent-2) 22%, var(--surface)); opacity: 1; }
+.node.boss { width: 64px; height: 64px; border: 2px solid var(--danger); } .node.boss .node-icon { color: var(--danger); font-size: 26px; }
+.node.elite { border-color: color-mix(in srgb, var(--danger) 70%, var(--line)); }
+.row-num { font-size: 13px; } .row-num.now { color: var(--accent); font-weight: 600; }
+@keyframes node-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); } 50% { box-shadow: 0 0 0 7px transparent; } }
+@media (prefers-reduced-motion: reduce) { .node.open { animation: none; } }
+
+/* Reward picks: art tile + body, three across on wide screens */
+.reward-grid { display: grid; gap: 10px; }
+.reward { display: flex; align-items: center; gap: 14px; text-align: left; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); transition: border-color .2s, transform .15s; }
+.reward:hover { border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); }
+.reward .art { width: 56px; height: 56px; flex: none; display: grid; place-items: center; border-radius: 12px; font-size: 26px; background: var(--bg); }
+.reward.r-passive .art { color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 16%, var(--bg)); }
+.reward.r-piece .art { color: var(--player); background: var(--sq-light); font-size: 34px; }
+.reward.r-gold .art { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--bg)); }
+.reward-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.reward-body strong { font-size: 18px; font-weight: 600; } .reward-body small { color: var(--muted); font-size: 14px; text-wrap: pretty; }
+.skip { min-height: 48px; }
+@media (min-width: 700px) {
+  .reward-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .reward { flex-direction: column; text-align: center; padding: 20px 14px; } .reward-body { align-items: center; }
+}
+
+/* Run end */
+.end .hero h1 { font-size: 32px; } .end.lost .hero h1 { color: var(--text); } .end.won .hero h1 { color: var(--accent); }
+.stats { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--line); gap: 1px; }
+.stats div { background: var(--surface); padding: 14px; } .stats dt { font-size: 13px; color: var(--muted); }
+.stats dd { margin: 4px 0 0; font-size: 32px; font-weight: 600; letter-spacing: -0.027em; } .stats dd small { font-size: 16px; color: var(--muted); font-weight: 400; } .stats dd.g { color: var(--accent); }
+.end section { display: flex; flex-direction: column; gap: 8px; }
+@media (min-width: 700px) { .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 400px) { .shell { padding-left: 12px; padding-right: 12px; } .hero h1 { font-size: 32px; } }
+
+[data-style="parlor"] .reward, [data-style="parlor"] .kit, [data-style="parlor"] .legend-box, [data-style="parlor"] .stats { border: 3px solid var(--line); box-shadow: 0 4px 0 var(--shadow); }
+[data-style="parlor"] .reward { background: color-mix(in srgb, var(--surface) 70%, #000); }
+.map-screen { overflow-x: clip; } /* SVG seams can report wider than the map on narrow phones */

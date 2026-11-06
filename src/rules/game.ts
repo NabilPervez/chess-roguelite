@@ -1,10 +1,37 @@
 import { at } from './board';
 import { allLegalMoves, inCheck, legalMoves, promotes, sideHooks } from './moves';
 import { landTiles, tickSide } from './tiles';
-import type { GameState, HookSet, Move } from './types';
+import tuning from '../data/tuning.json';
+import type { GameState, HookSet, Move, Piece } from './types';
 
 const name = (k: string) => ({ P: 'Pawn', N: 'Knight', B: 'Bishop', R: 'Rook', Q: 'Queen', K: 'King' })[k] ?? k;
 const sqName = (s: { r: number; c: number }) => `${'abcdef'[s.c]}${s.r + 1}`;
+
+/** How much a player capture adds to objective progress. Passive bonuses only boost the plain capture count. */
+function captureWorth(state: GameState, mover: Piece, captured: Piece, hooks: HookSet): number {
+  switch (state.objective ?? 'captures') {
+    case 'material': return (tuning.objective.materialValues as Record<string, number>)[captured.kind] ?? 0;
+    case 'officers': return captured.kind === 'P' ? 0 : 1;
+    case 'breakthrough': case 'regicide': return 0;
+    default: {
+      let worth = 1;
+      for (const h of sideHooks(hooks, 'player')) if (h.objectiveWorth) worth = h.objectiveWorth(mover, captured, worth);
+      return worth;
+    }
+  }
+}
+
+/** Short human label for the active objective, e.g. "5 captures". */
+export function objectiveLabel(s: Pick<GameState, 'objective' | 'capturesToWin' | 'checkmate'>): string {
+  if (s.checkmate) return 'checkmate';
+  if (!isFinite(s.capturesToWin)) return 'capture the king';
+  switch (s.objective ?? 'captures') {
+    case 'material': return `${s.capturesToWin} material`;
+    case 'officers': return `${s.capturesToWin} officer${s.capturesToWin > 1 ? 's' : ''}`;
+    case 'breakthrough': return 'promote a pawn';
+    default: return `${s.capturesToWin} captures`;
+  }
+}
 
 /** Apply a move. Throws on illegal input, so illegal moves are impossible by construction. */
 export function applyMove(state: GameState, move: Move, hooks: HookSet): GameState {
@@ -33,11 +60,10 @@ export function applyMove(state: GameState, move: Move, hooks: HookSet): GameSta
       status = captured.side === 'enemy' ? 'won' : 'lost';
       endReason = captured.side === 'enemy' ? 'You captured the enemy king.' : 'Your king was captured.';
     } else if (mover.side === 'player') {
-      let worth = 1;
-      for (const h of sideHooks(hooks, 'player')) if (h.objectiveWorth) worth = h.objectiveWorth(mover, captured, worth);
-      progress += worth;
+      progress += captureWorth(state, mover, captured, hooks);
     }
   }
+  if (promoted && mover.side === 'player' && state.objective === 'breakthrough') progress += 1;
 
   const turnNumber = mover.side === 'player' ? state.turnNumber + 1 : state.turnNumber;
   let next: GameState = { ...state, board, progress, status, endReason, log, used, turnNumber, turn: mover.side === 'player' ? 'enemy' : 'player' };
@@ -46,7 +72,7 @@ export function applyMove(state: GameState, move: Move, hooks: HookSet): GameSta
   for (const owner of ['player', 'enemy'] as const)
     for (const h of sideHooks(hooks, owner)) if (h.afterMove) next = h.afterMove(next, { prev: state, move, mover, captured, promoted, owner });
   if (next.status === 'playing' && next.progress >= state.capturesToWin) {
-    next = { ...next, status: 'won', endReason: `Objective met: ${state.capturesToWin} captures.` };
+    next = { ...next, status: 'won', endReason: `Objective met: ${objectiveLabel(state)}.` };
   }
   if (next.status === 'playing' && next.turn === 'player' && turnNumber >= state.turnLimit) {
     next = { ...next, status: 'lost', endReason: `Out of turns (${state.turnLimit}).` };

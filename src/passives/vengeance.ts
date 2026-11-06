@@ -12,7 +12,7 @@ export const vengeance: Hook = {
     if (captured.side === owner && captured.kind !== 'K') return primed.includes(owner) ? next : { ...next, vengeance: [...primed, owner] };
     if (mover.side === owner && primed.includes(owner)) {
       const rest = primed.filter((s) => s !== owner);
-      return { ...next, vengeance: rest, progress: owner === 'player' ? next.progress + bonus : next.progress, log: [...next.log, 'Vengeance!'] };
+      return { ...next, vengeance: rest, progress: owner === 'player' && (next.objective ?? 'captures') === 'captures' ? next.progress + bonus : next.progress, log: [...next.log, 'Vengeance!'] };
     }
     return next;
   },

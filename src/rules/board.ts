@@ -1,5 +1,5 @@
 import tuning from '../data/tuning.json';
-import type { Board, GameState, Kind, Piece, Side, Sq } from './types';
+import type { Board, GameState, Kind, ObjectiveKind, Piece, Side, Sq } from './types';
 
 export const N = tuning.boardSize;
 export const inBounds = (s: Sq) => s.r >= 0 && s.r < N && s.c >= 0 && s.c < N;
@@ -51,6 +51,7 @@ export interface FightOpts {
   turnLimit?: number;
   checkmate?: boolean;
   aiElo?: number;
+  objective?: ObjectiveKind;
 }
 
 export function newGame(court: string | null, playerPassives: string[], enemyPassives: string[] = [], opts: FightOpts = {}): GameState {
@@ -66,6 +67,7 @@ export function newGame(court: string | null, playerPassives: string[], enemyPas
     turnLimit: opts.turnLimit ?? tuning.objective.turnLimit,
     checkmate: opts.checkmate ?? false,
     aiElo: opts.aiElo,
+    objective: opts.objective,
     court, playerPassives, enemyPassives, log: [],
   };
 }

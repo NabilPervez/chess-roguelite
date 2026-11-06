@@ -37,3 +37,7 @@ npm run build   # production build in dist/
 
 ## Prototype rule simplifications
 Normal fights have no check (capturing the king ends them); elite and boss fights use check and checkmate (stalemate counts against the side that can't move). No castling, en passant, or pawn double-step; pawns promote to queens.
+
+## Fight objectives (Sprint 7)
+Normal fights rotate between five goals, set per map node and scaled by row (`tuning.json → objective`):
+**Captures** (4 → 6), **Material** (piece value, 6 → 10), **Officers** (non-pawns, from row 3), **Breakthrough** (promote a pawn, from row 4), **Take the king** (from row 6, +4 turns). Elites and the boss stay checkmate. Capture-boost passives (Bounty, Headhunter, Vengeance) only count in plain Captures fights.
