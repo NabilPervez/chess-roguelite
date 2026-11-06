@@ -1,6 +1,6 @@
 import tuning from '../data/tuning.json';
 
-export type ArtStyle = 'obsidian' | 'atlas' | 'toy';
+export type ArtStyle = 'obsidian' | 'atlas' | 'toy' | 'parlor';
 export type ThemePref = 'light' | 'dark' | 'system';
 export interface Settings { style: ArtStyle; theme: ThemePref }
 
@@ -8,6 +8,7 @@ export const STYLES: { id: ArtStyle; name: string; desc: string }[] = [
   { id: 'obsidian', name: 'Obsidian Court', desc: 'Dark stone, gold trim.' },
   { id: 'atlas', name: 'Gilded Atlas', desc: 'Old maps and ink.' },
   { id: 'toy', name: 'Paper Toy', desc: 'Chunky, bright tokens.' },
+  { id: 'parlor', name: 'Pixel Parlor', desc: 'CRT pixels on a swirling felt.' },
 ];
 export const DEFAULT_SETTINGS: Settings = { style: 'obsidian', theme: 'system' };
 const KEY = tuning.settings.key;
@@ -36,6 +37,7 @@ const FONTS: Record<ArtStyle, () => Promise<unknown>> = {
   obsidian: () => import('@fontsource/outfit'),
   atlas: () => import('@fontsource/eb-garamond'),
   toy: () => import('@fontsource/fredoka'),
+  parlor: () => import('@fontsource/pixelify-sans'),
 };
 
 /** Applies style + theme to <html> and loads only the active style's font. */

@@ -143,3 +143,56 @@ small.warn { font-weight: 600; }
 .sq.tile-trap .tile-icon, .sq.tile-crumbling .tile-icon { color: var(--danger); }
 .pc .badge { position: absolute; right: -8px; top: -6px; font-size: 13px; font-style: normal; }
 .pc.frozen { opacity: .55; }
+
+/* Sprint 6b: fight payout + coin burst */
+.payout { margin: 12px 0 0; display: flex; flex-direction: column; gap: 4px; }
+.payout div { display: flex; justify-content: space-between; color: var(--muted); }
+.payout dt, .payout dd { margin: 0; } .payout dd { color: var(--accent); font-weight: 700; }
+.payout .total { border-top: 1px solid var(--line); padding-top: 6px; margin-top: 2px; color: var(--text); font-weight: 700; font-size: 18px; }
+.coin-burst { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 60; }
+.coin-burst i { position: absolute; bottom: -30px; border-radius: 50%; opacity: 0;
+  background: radial-gradient(circle at 35% 30%, #fff6c4 0 18%, #ffd34d 30%, #c98a12 75%, #8a5a06 100%); box-shadow: inset 0 0 0 2px #a66f0a;
+  animation-name: coin-fly; animation-timing-function: cubic-bezier(.2,.7,.4,1); animation-fill-mode: forwards; }
+@keyframes coin-fly {
+  0% { transform: translate(0,0) rotateY(0); opacity: 1; }
+  45% { transform: translate(calc(var(--drift) * .6), var(--rise)) rotateY(calc(var(--spin) * .5)); opacity: 1; }
+  100% { transform: translate(var(--drift), 20vh) rotateY(var(--spin)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .coin-burst { display: none; } }
+
+/* Pixel Parlor: chunky CRT pixels over a slow swirling felt (Balatro-style motion background). */
+[data-style="parlor"] { --font: "Pixelify Sans", ui-monospace, monospace; --radius: 6px; }
+[data-style="parlor"][data-theme="dark"] {
+  --bg: #1b1418; --surface: #8a4a4f; --line: #f2e3c6; --text: #fbf0d9; --muted: #f0d9c0;
+  --accent: #f6c445; --on-accent: #2a1408; --accent-2: #5b7fd6; --danger: #ff5c5c;
+  --sq-light: #f2e3c6; --sq-dark: #9a4f55; --player: #fbf0d9; --enemy: #2a1820;
+  --shadow: #2a1820; --scrim: #10090dcc; --swirl-a: #2b2a1f; --swirl-b: #6e6a4a; --swirl-c: #151318; color-scheme: dark;
+}
+[data-style="parlor"][data-theme="light"] {
+  --bg: #efe2c7; --surface: #a8585d; --line: #3a2328; --text: #fff4de; --muted: #ffe6cc;
+  --accent: #f6c445; --on-accent: #2a1408; --accent-2: #2f56b8; --danger: #c4282e;
+  --sq-light: #fbf0d9; --sq-dark: #b4626a; --player: #fbf0d9; --enemy: #2a1820;
+  --shadow: #2a1820; --scrim: #2a182099; --swirl-a: #c9b98a; --swirl-b: #8e8660; --swirl-c: #e8dcbf; color-scheme: light;
+}
+[data-style="parlor"] body { background: var(--swirl-c); image-rendering: pixelated; }
+[data-style="parlor"] body::before { content: ""; position: fixed; inset: -50%; z-index: -2;
+  background: repeating-conic-gradient(from 0deg at 40% 45%, var(--swirl-a) 0 7deg, var(--swirl-c) 7deg 13deg, var(--swirl-b) 13deg 17deg, var(--swirl-c) 17deg 24deg),
+              radial-gradient(circle at 70% 60%, var(--swirl-b), transparent 40%);
+  filter: blur(1.5px) contrast(1.4); animation: parlor-swirl 60s linear infinite; }
+[data-style="parlor"] body::after { content: ""; position: fixed; inset: 0; z-index: 100; pointer-events: none;
+  background: repeating-linear-gradient(0deg, #0000 0 2px, #0003 2px 3px), radial-gradient(ellipse at center, #0000 60%, #0007 100%); }
+@keyframes parlor-swirl { 0% { transform: rotate(0) scale(1.1); } 50% { transform: rotate(180deg) scale(1.3); } 100% { transform: rotate(360deg) scale(1.1); } }
+@media (prefers-reduced-motion: reduce) { [data-style="parlor"] body::before { animation: none; } }
+[data-style="parlor"] .card, [data-style="parlor"] .stat, [data-style="parlor"] .chip, [data-style="parlor"] .army, [data-style="parlor"] .node {
+  border: 3px solid var(--line); box-shadow: 0 4px 0 var(--shadow); }
+[data-style="parlor"] .eyebrow, [data-style="parlor"] .card p, [data-style="parlor"] .stat small { color: var(--muted); }
+[data-style="parlor"] h1, [data-style="parlor"] h2 { text-shadow: 3px 3px 0 var(--shadow); letter-spacing: .02em; }
+[data-style="parlor"] .primary { background: #4caf50; color: #fff; border: 3px solid var(--line); box-shadow: 0 4px 0 var(--shadow); text-shadow: 2px 2px 0 #1b4d1e; }
+[data-style="parlor"] .primary:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--shadow); }
+[data-style="parlor"] .board { border: 4px solid var(--line); border-radius: 4px; box-shadow: 0 6px 0 var(--shadow); }
+[data-style="parlor"] .sq.dark { background: repeating-linear-gradient(135deg, var(--sq-dark) 0 4px, color-mix(in srgb, var(--sq-dark) 70%, #000) 4px 7px); }
+[data-style="parlor"] .pc { text-shadow: 2px 2px 0 var(--shadow), -1px -1px 0 var(--shadow); }
+[data-style="parlor"] .pc.enemy { text-shadow: 2px 2px 0 var(--line), -1px -1px 0 var(--line); }
+[data-style="parlor"] .gold, [data-style="parlor"] .price, [data-style="parlor"] .payout dd { color: var(--accent); text-shadow: 2px 2px 0 var(--shadow); }
+[data-style="parlor"] .passive, [data-style="parlor"] .style-card { background: color-mix(in srgb, var(--surface) 70%, #000); border: 3px solid var(--line); }
+.style-grid { grid-template-columns: repeat(2, 1fr); }

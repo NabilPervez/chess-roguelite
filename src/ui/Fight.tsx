@@ -7,6 +7,8 @@ import { inCheck, legalMoves } from '../rules/moves';
 import type { GameState, Move, Sq } from '../rules/types';
 import { mulberry32 } from '../run/rng';
 import { Board } from './Board';
+import { CoinBurst } from './CoinBurst';
+import { fightPayout } from '../run/economy';
 import { TILE_INFO } from '../rules/tiles';
 import type { TileKind } from '../rules/types';
 
@@ -40,6 +42,7 @@ export function Fight({ initial, title, seed, onEnd, onProgress }: { initial: Ga
     setSel(p?.side === 'player' && !(sel && sel.r === sq.r && sel.c === sq.c) ? sq : null);
   }
 
+  const pay = useMemo(() => (game.status === 'playing' ? null : fightPayout(initial, game)), [game.status]);
   const court = game.court ? COURTS[game.court] : null;
   const kingHunt = !isFinite(game.capturesToWin);
   const turnsLeft = game.turnLimit - game.turnNumber;
@@ -63,13 +66,23 @@ export function Fight({ initial, title, seed, onEnd, onProgress }: { initial: Ga
       <ol className="log">{game.log.slice(-4).reverse().map((l, i) => <li key={i}>{l}</li>)}</ol>
       {game.status !== 'playing' && (
         <div className="overlay" role="dialog" aria-modal="true">
+          {game.status === 'won' && <CoinBurst />}
           <div className="card result">
             <span className="eyebrow">{game.status === 'won' ? 'Victory' : 'Defeat'}</span>
             <h2>{game.status === 'won' ? 'Fight won' : 'Run over'}</h2>
             <p>{game.endReason}</p>
-            {(game.goldEarned ?? 0) > 0 && <p>Earned ◈{game.goldEarned} this fight.</p>}
+            {pay && game.status === 'won' && (
+              <dl className="payout">
+                <div><dt>Pieces saved ×{pay.saved}</dt><dd>◈{pay.savedGold}</dd></div>
+                <div><dt>Pieces taken ×{pay.captured}</dt><dd>◈{pay.captureGold}</dd></div>
+                <div><dt>Speed · {pay.turnsLeft} turns spare</dt><dd>◈{pay.speedGold}</dd></div>
+                {pay.tileGold > 0 && <div><dt>Gold tiles</dt><dd>◈{pay.tileGold}</dd></div>}
+                <div className="total"><dt>Total</dt><dd>◈{pay.total}</dd></div>
+              </dl>
+            )}
+            {pay && game.status !== 'won' && pay.tileGold > 0 && <p>Earned ◈{pay.tileGold} this fight.</p>}
             <p className="meta">Fight time {Math.floor(elapsed / 60000)}m {Math.round((elapsed % 60000) / 1000)}s · {game.turnNumber} turns</p>
-            <div className="row"><button className="primary" onClick={() => onEnd(game.status === 'won', game.goldEarned ?? 0)}>{game.status === 'won' ? 'Claim reward' : 'Continue'}</button></div>
+            <div className="row"><button className="primary" onClick={() => onEnd(game.status === 'won', pay?.total ?? 0)}>{game.status === 'won' ? 'Claim reward' : 'Continue'}</button></div>
           </div>
         </div>
       )}

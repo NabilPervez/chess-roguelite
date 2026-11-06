@@ -321,5 +321,15 @@
       "crumbling",
       "gold"
     ]
+  },
+  "economy": {
+    "perSaved": 2,
+    "perCapture": 3,
+    "perTurnLeft": 2,
+    "turnBonusCap": 20,
+    "coinBurst": {
+      "coins": 42,
+      "durationMs": 2200
+    }
   }
 }
