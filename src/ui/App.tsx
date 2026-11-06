@@ -193,7 +193,7 @@ export function App() {
   }
 
   if (screen.kind === 'fight') {
-    const { court, enemyPassives, opts } = fightOpts(screen.node, run.army);
+    const { court, enemyPassives, opts } = fightOpts(screen.node, run.army, settings.beaten ? settings.eloFloor : null);
     const resumed = fightRef.current?.nodeId === screen.node.id ? fightRef.current.game : null;
     const fresh = () => {
       const g = newGame(court, run.passives, enemyPassives, { ...opts, playerArmy: run.army });
@@ -210,7 +210,7 @@ export function App() {
         fightRef.current = undefined;
         if (!won) { setRun({ ...run, relics: [], status: 'lost' }); setScreen({ kind: 'end' }); return; }
         const r = { ...run, relics: [], fightsWon: run.fightsWon + 1, gold: run.gold + earned };
-        if (screen.node.type === 'boss') { setRun({ ...r, status: 'won' }); setScreen({ kind: 'end' }); return; }
+        if (screen.node.type === 'boss') { setSettings((st) => ({ ...st, beaten: true })); setRun({ ...r, status: 'won' }); setScreen({ kind: 'end' }); return; }
         setRun(r); setScreen({ kind: 'reward', offers: rollRewards(r, rand.current, screen.node.type === 'elite') });
       }} />;
   }
@@ -381,6 +381,13 @@ export function App() {
         <div><dt>Army</dt><dd>{run.army.length}</dd></div>
         <div><dt>Gold</dt><dd className="g">◈ {run.gold}</dd></div>
       </dl>
+      {run.status === 'won' && (
+        <section className="card unlock-note"><span className="eyebrow">🔓 Unlocked · Difficulty</span>
+          <p>You can now set your own Elo in Settings. Enemies start at that rating and climb from there.</p>
+          <button className="ghost" onClick={() => setShowSettings(true)}>Open settings</button>
+          {showSettings && <SettingsPanel value={settings} prefersDark={prefersDark} onChange={setSettings} onClose={() => setShowSettings(false)} />}
+        </section>
+      )}
       <section><span className="eyebrow">Final army</span>{army}</section>
       {passiveChips && <section><span className="eyebrow">Passives</span>{passiveChips}</section>}
       {(() => {

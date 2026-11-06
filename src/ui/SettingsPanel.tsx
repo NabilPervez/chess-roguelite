@@ -1,8 +1,14 @@
+import { useState } from 'react';
+import tuning from '../data/tuning.json';
+import { clampFloor } from '../ai/elo';
 import { STYLES, type Settings, type ThemePref } from './settings';
 
 const PREVIEW = 'RNBKPP..pp..knbr'.split('');
 
 export function SettingsPanel({ value, prefersDark, onChange, onClose }: { value: Settings; prefersDark: boolean; onChange: (s: Settings) => void; onClose: () => void }) {
+  const F = tuning.ai.elo.floor;
+  const [draft, setDraft] = useState(value.eloFloor?.toString() ?? '');
+  const commit = (txt: string) => { const f = clampFloor(txt); setDraft(f?.toString() ?? ''); onChange({ ...value, eloFloor: f }); };
   const theme = value.theme === 'system' ? (prefersDark ? 'dark' : 'light') : value.theme;
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label="Settings">
@@ -28,7 +34,20 @@ export function SettingsPanel({ value, prefersDark, onChange, onClose }: { value
             </button>
           ))}
         </div>
-        <div className="row"><button className="primary" onClick={onClose}>Done</button></div>
+        <h2 style={{ marginTop: 16 }}>Difficulty</h2>
+        <div className={`elo-floor${value.beaten ? '' : ' locked'}`} aria-disabled={!value.beaten}>
+          <label htmlFor="elo-floor">Your Elo (AI floor)</label>
+          <div className="elo-row">
+            <input id="elo-floor" type="number" inputMode="numeric" min={F.min} max={F.max} step={F.step} placeholder="Default"
+              disabled={!value.beaten} value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={(e) => commit(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') commit((e.target as HTMLInputElement).value); }} />
+            {value.eloFloor !== null && <button className="ghost" disabled={!value.beaten} onClick={() => commit('')}>Reset</button>}
+          </div>
+          <small>{value.beaten
+            ? `Enemies start at this rating (${F.min}–${F.max}) and climb from there, boss included. Leave blank for the default climb.`
+            : '🔒 Unlocks after you beat the Iron Regent.'}</small>
+        </div>
+        <div className="row"><button className="primary" onClick={() => { commit(draft); onClose(); }}>Done</button></div>
       </section>
     </div>
   );

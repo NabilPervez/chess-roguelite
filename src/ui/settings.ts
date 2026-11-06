@@ -1,8 +1,10 @@
 import tuning from '../data/tuning.json';
+import { clampFloor } from '../ai/elo';
 
 export type ArtStyle = 'obsidian' | 'atlas' | 'toy' | 'parlor';
 export type ThemePref = 'light' | 'dark' | 'system';
-export interface Settings { style: ArtStyle; theme: ThemePref }
+/** beaten: has cleared the game at least once (unlocks eloFloor). eloFloor: AI starts here; null = default curve. */
+export interface Settings { style: ArtStyle; theme: ThemePref; beaten: boolean; eloFloor: number | null }
 
 export const STYLES: { id: ArtStyle; name: string; desc: string }[] = [
   { id: 'obsidian', name: 'Obsidian Court', desc: 'Dark stone, gold trim.' },
@@ -10,7 +12,7 @@ export const STYLES: { id: ArtStyle; name: string; desc: string }[] = [
   { id: 'toy', name: 'Paper Toy', desc: 'Chunky, bright tokens.' },
   { id: 'parlor', name: 'Pixel Parlor', desc: 'CRT pixels on a swirling felt.' },
 ];
-export const DEFAULT_SETTINGS: Settings = { style: 'obsidian', theme: 'system' };
+export const DEFAULT_SETTINGS: Settings = { style: 'obsidian', theme: 'system', beaten: false, eloFloor: null };
 const KEY = tuning.settings.key;
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>;
@@ -23,6 +25,8 @@ export function loadSettings(s: Store | null = store()): Settings {
     return {
       style: STYLES.some((x) => x.id === raw?.style) ? raw.style : DEFAULT_SETTINGS.style,
       theme: ['light', 'dark', 'system'].includes(raw?.theme) ? raw.theme : DEFAULT_SETTINGS.theme,
+      beaten: raw?.beaten === true,
+      eloFloor: raw?.beaten === true ? clampFloor(raw?.eloFloor) : null,
     };
   } catch { return { ...DEFAULT_SETTINGS }; }
 }

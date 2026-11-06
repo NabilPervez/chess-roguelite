@@ -87,8 +87,8 @@ import { DEFAULT_SETTINGS, loadSettings, resolveTheme, saveSettings } from '../s
 const mem = () => { const m = new Map<string, string>(); return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) }; };
 describe('Settings', () => {
   it('round-trips style and theme', () => {
-    const s = mem(); saveSettings({ style: 'toy', theme: 'light' }, s);
-    expect(loadSettings(s)).toEqual({ style: 'toy', theme: 'light' });
+    const s = mem(); saveSettings({ style: 'toy', theme: 'light', beaten: false, eloFloor: null }, s);
+    expect(loadSettings(s)).toEqual({ style: 'toy', theme: 'light', beaten: false, eloFloor: null });
   });
   it('falls back to Obsidian + System on missing or junk data', () => {
     expect(loadSettings(mem())).toEqual(DEFAULT_SETTINGS);

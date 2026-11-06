@@ -104,7 +104,13 @@
       "eliteBonus": 75,
       "boss": 800,
       "min": 200,
-      "max": 1200
+      "max": 1200,
+      "floor": {
+        "min": 200,
+        "max": 2000,
+        "step": 25,
+        "ceiling": 2400
+      }
     },
     "profiles": [
       {

@@ -57,10 +57,10 @@ export function reachable(run: RunState): MapNode[] {
   return findNode(run.map, run.at).next.map((id) => findNode(run.map, id));
 }
 
-export function fightOpts(node: MapNode, army?: Kind[]): { court: string | null; enemyPassives: string[]; opts: FightOpts } {
+export function fightOpts(node: MapNode, army?: Kind[], eloFloor: number | null = null): { court: string | null; enemyPassives: string[]; opts: FightOpts } {
   if (node.type === 'boss') {
     const b = tuning.run.boss;
-    return { court: node.court, enemyPassives: b.passives, opts: { enemyArmy: b.army as Kind[], capturesToWin: Infinity, turnLimit: b.turnLimit, checkmate: b.checkmate, aiElo: eloForNode(node.row, 'boss') } };
+    return { court: node.court, enemyPassives: b.passives, opts: { enemyArmy: b.army as Kind[], capturesToWin: Infinity, turnLimit: b.turnLimit, checkmate: b.checkmate, aiElo: eloForNode(node.row, 'boss', eloFloor) } };
   }
   const tiers = tuning.run.enemyTiers;
   const base = Math.floor((node.row / tuning.run.rows) * tiers.length);
@@ -68,11 +68,11 @@ export function fightOpts(node: MapNode, army?: Kind[]): { court: string | null;
     const e = tuning.run.elite;
     const enemyArmy = tiers[Math.min(tiers.length - 1, base + e.tierBoost)] as Kind[];
     const passive = e.passivePool[(node.row * 7 + node.col) % e.passivePool.length];
-    return { court: node.court, enemyPassives: [passive], opts: { enemyArmy, capturesToWin: Infinity, turnLimit: e.turnLimit, checkmate: e.checkmate, aiElo: eloForNode(node.row, 'elite') } };
+    return { court: node.court, enemyPassives: [passive], opts: { enemyArmy, capturesToWin: Infinity, turnLimit: e.turnLimit, checkmate: e.checkmate, aiElo: eloForNode(node.row, 'elite', eloFloor) } };
   }
   const enemyArmy = tiers[Math.min(tiers.length - 1, base)] as Kind[];
   const obj = nodeObjective(node, enemyArmy, army);
-  return { court: node.court, enemyPassives: [], opts: { enemyArmy, ...obj, aiElo: eloForNode(node.row, 'fight') } };
+  return { court: node.court, enemyPassives: [], opts: { enemyArmy, ...obj, aiElo: eloForNode(node.row, 'fight', eloFloor) } };
 }
 
 /** Normal fights rotate objectives by map position; harder ones unlock higher up and targets scale with the row. */

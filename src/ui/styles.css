@@ -397,3 +397,15 @@ small.warn { font-weight: 600; }
 .ob-nav .ghost { background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 14px; color: var(--text); }
 .ob-nav .ghost:disabled { opacity: .4; }
 .how-to { align-self: flex-start; background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; color: var(--text); min-height: 44px; }
+
+/* Elo floor (settings) */
+.elo-floor { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.elo-floor label { font-weight: 600; }
+.elo-row { display: flex; gap: 8px; }
+.elo-row input { flex: 1; min-height: 44px; font: inherit; font-size: 16px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+.elo-row .ghost { background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 0 14px; color: var(--text); }
+.elo-floor small { color: var(--muted); }
+.elo-floor.locked { opacity: .45; }
+.elo-floor.locked input { cursor: not-allowed; }
+.unlock-note { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); display: flex; flex-direction: column; gap: 8px; }
+.unlock-note .ghost { align-self: flex-start; background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; color: var(--text); min-height: 44px; }
