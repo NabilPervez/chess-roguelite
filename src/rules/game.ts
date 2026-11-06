@@ -1,4 +1,3 @@
-import tuning from '../data/tuning.json';
 import { at, N } from './board';
 import { allLegalMoves, legalMoves, sideHooks } from './moves';
 import type { GameState, HookSet, Move } from './types';
@@ -36,13 +35,13 @@ export function applyMove(state: GameState, move: Move, hooks: HookSet): GameSta
   }
 
   const turnNumber = mover.side === 'player' ? state.turnNumber + 1 : state.turnNumber;
-  if (status === 'playing' && progress >= tuning.objective.capturesToWin) {
+  if (status === 'playing' && progress >= state.capturesToWin) {
     status = 'won';
-    endReason = `Objective met: ${tuning.objective.capturesToWin} captures.`;
+    endReason = `Objective met: ${state.capturesToWin} captures.`;
   }
   let next: GameState = { ...state, board, progress, status, endReason, log, turnNumber, turn: mover.side === 'player' ? 'enemy' : 'player' };
-  if (next.status === 'playing' && next.turn === 'player' && turnNumber >= tuning.objective.turnLimit) {
-    next = { ...next, status: 'lost', endReason: `Out of turns (${tuning.objective.turnLimit}).` };
+  if (next.status === 'playing' && next.turn === 'player' && turnNumber >= state.turnLimit) {
+    next = { ...next, status: 'lost', endReason: `Out of turns (${state.turnLimit}).` };
   }
   // Stalemate for whoever moves next ends the fight.
   if (next.status === 'playing' && allLegalMoves(next, hooks).length === 0) {

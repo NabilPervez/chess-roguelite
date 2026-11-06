@@ -50,3 +50,23 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .overlay { position: fixed; inset: 0; background: #0009; display: grid; place-items: center; padding: 16px; }
 .result { width: 100%; max-width: 420px; }
 .meta { margin-top: 8px !important; font-size: 13px; }
+.passive-grid.one { grid-template-columns: 1fr; }
+.ghost { background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 12px; color: var(--muted); }
+.enemy-chip { border-color: color-mix(in srgb, var(--danger) 50%, var(--line)); }
+.army { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 6px 10px; }
+.pc.small { font-size: 26px; }
+.gold { margin-left: auto; color: var(--accent); font-weight: 700; }
+.legend span { white-space: nowrap; }
+.legend { flex-wrap: wrap; }
+.map { display: flex; flex-direction: column; gap: 6px; }
+.map-row { display: flex; align-items: center; gap: 8px; }
+.map-row.past { opacity: .4; }
+.row-num { width: 18px; color: var(--muted); font-size: 12px; text-align: right; }
+.row-nodes { flex: 1; display: flex; justify-content: space-around; gap: 6px; }
+.node { flex: 1; max-width: 110px; min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); display: flex; flex-direction: column; align-items: center; padding: 4px; color: var(--muted); }
+.node:disabled { cursor: default; }
+.node.open { border-color: var(--accent); color: var(--text); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+.node.here { border-color: var(--accent-2); color: var(--text); }
+.node.boss { border-color: color-mix(in srgb, var(--danger) 60%, var(--line)); }
+.node-icon { font-size: 18px; line-height: 1.2; }
+.node-label { font-size: 11px; }

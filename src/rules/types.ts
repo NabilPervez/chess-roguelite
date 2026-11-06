@@ -13,6 +13,9 @@ export interface GameState {
   turnNumber: number;
   /** Objective progress (captures, possibly weighted by passives). */
   progress: number;
+  /** Progress needed to win; Infinity means only a king capture wins. */
+  capturesToWin: number;
+  turnLimit: number;
   status: Status;
   endReason?: string;
   court: string | null;

@@ -7,6 +7,7 @@ Chess roguelite PWA (React + Vite + TS, no engine). Spec: PRD in Notion / `docs`
 - Courts and passives are `Hook` objects (`src/rules/types.ts`), **one file per passive** in `src/passives/`, registered in `src/passives/index.ts`. Hooks: `moveCap`, `onMoveGen`, `canBeCaptured`, `objectiveWorth`.
 - Owner passives apply to their own side; `canBeCaptured` is checked on the *target's* side; the court applies to both.
 - No hard-coded tuning numbers: put them in `src/data/tuning.json`.
+- Court `onMoveGen` runs after passives. `src/run/` holds map/run/rewards; seeded via `src/run/rng.ts`.
 - `ui/` never owns game rules; it calls `legalMoves` / `applyMove`.
 - AI must stay under 300 ms per move on a mid-range phone.
 

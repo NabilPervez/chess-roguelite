@@ -1,9 +1,11 @@
 # Gambit Spire (prototype)
 
-A chess roguelite: short 6×6 fights on boards with a "court" rule, plus passives you pick. This is **Sprint 1** — one playable fight to answer "is this fun?"
+A chess roguelite: short 6×6 fights on boards with a "court" rule, plus passives you pick. Current: **Sprint 2** — a full Act 1 run: Draft army, branching map, rewards, rest sites and a boss preview.
 
 ## Play
-Pick up to 3 passives → fight on the **Mud** court (no piece moves more than 3 squares) → capture 4 enemy pieces within 20 turns. Lose your king and you lose.
+Pick a starting passive → climb a 15-row map → each fight node shows its court (⛰ Mud, ❄ Ice, ◎ Arena) → capture the objective count within 20 turns → pick 1 of 3 rewards (passive, piece, or gold). ☾ Rest sites promote a pawn or drop a passive. Row 15 is the boss: capture its king. Lose your king and the run is over.
+
+**Courts:** Mud (max 3 squares per move) · Ice (sliders can't stop early) · Arena (kings/pawns on the centre move 1 extra).
 
 - Tap a piece to see moves: purple = move, red = capture, gold = unlocked by a passive.
 - The result screen shows fight time — note it for playtests.
@@ -19,7 +21,7 @@ npm run build   # production build in dist/
 ```
 
 ## Structure
-`src/rules` pure engine · `src/passives` one file per court/passive · `src/ai` greedy AI · `src/ui` React · `src/data/tuning.json` all tuning values.
+`src/rules` pure engine · `src/passives` one file per court/passive · `src/ai` greedy AI · `src/run` seeded map, run state, rewards · `src/ui` React · `src/data/tuning.json` all tuning values.
 
 ## Prototype rule simplifications
 No check/checkmate (capturing the king ends the fight), no castling, en passant, or pawn double-step; pawns promote to queens.

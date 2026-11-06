@@ -1,16 +1,154 @@
 {
   "boardSize": 6,
-  "objective": { "capturesToWin": 4, "turnLimit": 20 },
-  "courts": { "mud": { "maxDistance": 3 } },
-  "pieceValues": { "P": 1, "N": 3, "B": 3, "R": 5, "Q": 9, "K": 100 },
+  "objective": {
+    "capturesToWin": 4,
+    "turnLimit": 20
+  },
+  "courts": {
+    "mud": {
+      "maxDistance": 3
+    },
+    "ice": {},
+    "arena": {
+      "center": [
+        2,
+        3
+      ]
+    }
+  },
+  "pieceValues": {
+    "P": 1,
+    "N": 3,
+    "B": 3,
+    "R": 5,
+    "Q": 9,
+    "K": 100
+  },
   "passives": {
-    "royalGuard": { "kingRange": 2 },
-    "bounty": { "pawnCaptureWorth": 2 },
+    "royalGuard": {
+      "kingRange": 2
+    },
+    "bounty": {
+      "pawnCaptureWorth": 2
+    },
     "maxActive": 3
   },
-  "ai": { "seed": 1337 },
+  "ai": {
+    "seed": 1337
+  },
   "setup": {
-    "backRank": ["R", "N", "Q", "K", "B", "R"],
-    "pawnRank": ["P", "P", "P", "P", "P", "P"]
+    "backRank": [
+      "R",
+      "N",
+      "Q",
+      "K",
+      "B",
+      "R"
+    ],
+    "pawnRank": [
+      "P",
+      "P",
+      "P",
+      "P",
+      "P",
+      "P"
+    ]
+  },
+  "run": {
+    "rows": 15,
+    "minNodes": 2,
+    "maxNodes": 4,
+    "restChance": 0.2,
+    "courts": [
+      "mud",
+      "ice",
+      "arena"
+    ],
+    "startArmy": [
+      "K",
+      "P",
+      "P",
+      "P",
+      "P"
+    ],
+    "pieceCap": 10,
+    "startPassiveChoices": 3,
+    "rewardGold": 25,
+    "rewardPieces": [
+      "N",
+      "N",
+      "B",
+      "B",
+      "R",
+      "Q"
+    ],
+    "enemyTiers": [
+      [
+        "K",
+        "P",
+        "P",
+        "P",
+        "P",
+        "N"
+      ],
+      [
+        "K",
+        "P",
+        "P",
+        "P",
+        "P",
+        "P",
+        "N",
+        "B"
+      ],
+      [
+        "K",
+        "P",
+        "P",
+        "P",
+        "P",
+        "P",
+        "P",
+        "N",
+        "B",
+        "R"
+      ],
+      [
+        "K",
+        "P",
+        "P",
+        "P",
+        "P",
+        "P",
+        "P",
+        "R",
+        "N",
+        "B",
+        "Q",
+        "R"
+      ]
+    ],
+    "boss": {
+      "army": [
+        "K",
+        "P",
+        "P",
+        "P",
+        "P",
+        "P",
+        "P",
+        "R",
+        "N",
+        "B",
+        "Q",
+        "R"
+      ],
+      "passives": [
+        "phalanx",
+        "royalGuard"
+      ],
+      "turnLimit": 40,
+      "court": "mud"
+    }
   }
 }

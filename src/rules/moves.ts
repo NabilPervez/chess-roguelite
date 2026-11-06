@@ -67,6 +67,8 @@ export function legalMoves(state: GameState, from: Sq, hooks: HookSet): Move[] {
   const own = sideHooks(hooks, p.side);
   let moves = baseMoves(state.board, from);
   for (const h of own) if (h.onMoveGen) moves = h.onMoveGen({ state, piece: p, from }, moves);
+  // Court runs last so it shapes every move, including passive-granted ones.
+  if (hooks.court?.onMoveGen) moves = hooks.court.onMoveGen({ state, piece: p, from }, moves);
 
   // Distance cap: court sets it, owner passives may adjust it.
   let cap = Infinity;

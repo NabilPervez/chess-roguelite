@@ -28,9 +28,40 @@ export function initialBoard(): Board {
   return b;
 }
 
-export function newGame(court: string | null, playerPassives: string[], enemyPassives: string[] = []): GameState {
+/** Place an army on its home ranks: king central, other non-pawns on the back rank, pawns in front, overflow behind. */
+export function placeArmy(b: Board, side: Side, army: Kind[]): void {
+  const back = side === 'player' ? 0 : N - 1;
+  const front = side === 'player' ? 1 : N - 2;
+  const backOrder = [3, 2, 1, 4, 0, 5];
+  const frontOrder = [2, 3, 1, 4, 0, 5];
+  const backQ = backOrder.filter((c) => !b[back][c]);
+  const frontQ = frontOrder.filter((c) => !b[front][c]);
+  const sorted = [...army].sort((a, z) => 'KQRBNP'.indexOf(a) - 'KQRBNP'.indexOf(z));
+  for (const k of sorted) {
+    if (k === 'P' && frontQ.length) b[front][frontQ.shift()!] = makePiece(side, k);
+    else if (backQ.length) b[back][backQ.shift()!] = makePiece(side, k);
+    else if (frontQ.length) b[front][frontQ.shift()!] = makePiece(side, k);
+  }
+}
+
+export interface FightOpts {
+  playerArmy?: Kind[];
+  enemyArmy?: Kind[];
+  capturesToWin?: number;
+  turnLimit?: number;
+}
+
+export function newGame(court: string | null, playerPassives: string[], enemyPassives: string[] = [], opts: FightOpts = {}): GameState {
+  let board = initialBoard();
+  if (opts.playerArmy || opts.enemyArmy) {
+    board = emptyBoard();
+    placeArmy(board, 'player', opts.playerArmy ?? [...tuning.setup.backRank, ...tuning.setup.pawnRank] as Kind[]);
+    placeArmy(board, 'enemy', opts.enemyArmy ?? [...tuning.setup.backRank, ...tuning.setup.pawnRank] as Kind[]);
+  }
   return {
-    board: initialBoard(), turn: 'player', turnNumber: 0, progress: 0, status: 'playing',
+    board, turn: 'player', turnNumber: 0, progress: 0, status: 'playing',
+    capturesToWin: opts.capturesToWin ?? tuning.objective.capturesToWin,
+    turnLimit: opts.turnLimit ?? tuning.objective.turnLimit,
     court, playerPassives, enemyPassives, log: [],
   };
 }
