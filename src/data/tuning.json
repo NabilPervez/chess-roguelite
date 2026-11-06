@@ -1,0 +1,16 @@
+{
+  "boardSize": 6,
+  "objective": { "capturesToWin": 4, "turnLimit": 20 },
+  "courts": { "mud": { "maxDistance": 3 } },
+  "pieceValues": { "P": 1, "N": 3, "B": 3, "R": 5, "Q": 9, "K": 100 },
+  "passives": {
+    "royalGuard": { "kingRange": 2 },
+    "bounty": { "pawnCaptureWorth": 2 },
+    "maxActive": 3
+  },
+  "ai": { "seed": 1337 },
+  "setup": {
+    "backRank": ["R", "N", "Q", "K", "B", "R"],
+    "pawnRank": ["P", "P", "P", "P", "P", "P"]
+  }
+}

@@ -1,0 +1,103 @@
+import { at, dist, forward, inBounds, N } from './board';
+import type { Board, GameState, Hook, HookSet, Move, Piece, Sq } from './types';
+
+const ORTHO = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+const DIAG = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+export const KNIGHT = [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]];
+
+function slide(b: Board, p: Piece, from: Sq, dirs: number[][], max = N): Move[] {
+  const out: Move[] = [];
+  for (const [dr, dc] of dirs) {
+    for (let i = 1; i <= max; i++) {
+      const to = { r: from.r + dr * i, c: from.c + dc * i };
+      if (!inBounds(to)) break;
+      const t = at(b, to);
+      if (!t) { out.push({ from, to, capture: false }); continue; }
+      if (t.side !== p.side) out.push({ from, to, capture: true });
+      break;
+    }
+  }
+  return out;
+}
+
+export function jumps(b: Board, p: Piece, from: Sq, offsets: number[][]): Move[] {
+  const out: Move[] = [];
+  for (const [dr, dc] of offsets) {
+    const to = { r: from.r + dr, c: from.c + dc };
+    if (!inBounds(to)) continue;
+    const t = at(b, to);
+    if (!t) out.push({ from, to, capture: false });
+    else if (t.side !== p.side) out.push({ from, to, capture: true });
+  }
+  return out;
+}
+
+/** Standard moves on a 6×6 board (no castling, no en passant, no double pawn step). */
+export function baseMoves(b: Board, from: Sq): Move[] {
+  const p = at(b, from);
+  if (!p) return [];
+  switch (p.kind) {
+    case 'R': return slide(b, p, from, ORTHO);
+    case 'B': return slide(b, p, from, DIAG);
+    case 'Q': return slide(b, p, from, [...ORTHO, ...DIAG]);
+    case 'K': return slide(b, p, from, [...ORTHO, ...DIAG], 1);
+    case 'N': return jumps(b, p, from, KNIGHT);
+    case 'P': {
+      const out: Move[] = [];
+      const f = forward(p.side);
+      const ahead = { r: from.r + f, c: from.c };
+      if (inBounds(ahead) && !at(b, ahead)) out.push({ from, to: ahead, capture: false });
+      for (const dc of [-1, 1]) {
+        const to = { r: from.r + f, c: from.c + dc };
+        const t = at(b, to);
+        if (t && t.side !== p.side) out.push({ from, to, capture: true });
+      }
+      return out;
+    }
+  }
+}
+
+const allHooks = (h: HookSet): Hook[] => [...(h.court ? [h.court] : []), ...h.player, ...h.enemy];
+export const sideHooks = (h: HookSet, side: Piece['side']) => (side === 'player' ? h.player : h.enemy);
+
+/** Legal moves for the piece at `from`, with court and passive hooks applied. */
+export function legalMoves(state: GameState, from: Sq, hooks: HookSet): Move[] {
+  const p = at(state.board, from);
+  if (!p || p.side !== state.turn || state.status !== 'playing') return [];
+  const own = sideHooks(hooks, p.side);
+  let moves = baseMoves(state.board, from);
+  for (const h of own) if (h.onMoveGen) moves = h.onMoveGen({ state, piece: p, from }, moves);
+
+  // Distance cap: court sets it, owner passives may adjust it.
+  let cap = Infinity;
+  if (hooks.court?.moveCap) cap = hooks.court.moveCap(p, cap);
+  for (const h of own) if (h.moveCap) cap = h.moveCap(p, cap);
+  moves = moves.filter((m) => dist(m.from, m.to) <= cap);
+
+  // Capture immunity: the target's own passives (and the court) decide.
+  moves = moves.filter((m) => {
+    if (!m.capture) return true;
+    const target = at(state.board, m.to)!;
+    const guards = [...(hooks.court ? [hooks.court] : []), ...sideHooks(hooks, target.side)];
+    return guards.every((h) => !h.canBeCaptured || h.canBeCaptured(state, target, m.to));
+  });
+
+  // De-duplicate identical destinations.
+  const seen = new Set<string>();
+  return moves.filter((m) => {
+    const k = `${m.to.r},${m.to.c}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+export function allLegalMoves(state: GameState, hooks: HookSet): Move[] {
+  const out: Move[] = [];
+  for (let r = 0; r < N; r++)
+    for (let c = 0; c < N; c++)
+      if (state.board[r][c]?.side === state.turn) out.push(...legalMoves(state, { r, c }, hooks));
+  return out;
+}
+
+export { allHooks };
