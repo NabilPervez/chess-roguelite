@@ -291,7 +291,8 @@ small.warn { font-weight: 600; }
 .passive strong { font-weight: 600; font-size: 16px; display: flex; align-items: center; gap: 8px; }
 .passive .ic { font-style: normal; color: var(--accent-2); }
 .passive:not(:disabled):hover { border-color: color-mix(in srgb, var(--accent) 60%, var(--line)); }
-.passive:not(:disabled):active, .reward:active, .node.open:active { transform: scale(.98); }
+.passive:not(:disabled):active, .reward:active { transform: scale(.98); }
+.node.open:active { transform: translate(-50%, -50%) scale(.96); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .primary { font-size: 16px; min-height: 52px; }
 
