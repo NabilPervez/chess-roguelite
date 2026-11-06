@@ -18,6 +18,8 @@ export interface GameState {
   turnLimit: number;
   /** Checkmate fight: moves may not leave your king in check; win by mate. */
   checkmate?: boolean;
+  /** Enemy AI rating for this fight. */
+  aiElo?: number;
   status: Status;
   endReason?: string;
   court: string | null;

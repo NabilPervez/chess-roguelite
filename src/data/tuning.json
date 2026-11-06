@@ -37,7 +37,53 @@
     }
   },
   "ai": {
-    "seed": 1337
+    "seed": 1337,
+    "elo": {
+      "start": 300,
+      "perRow": 30,
+      "eliteBonus": 75,
+      "boss": 800,
+      "min": 200,
+      "max": 1200
+    },
+    "profiles": [
+      {
+        "maxElo": 449,
+        "depth": 1,
+        "blunder": 0.3,
+        "noise": 1.2
+      },
+      {
+        "maxElo": 649,
+        "depth": 2,
+        "blunder": 0.15,
+        "noise": 0.6
+      },
+      {
+        "maxElo": 849,
+        "depth": 2,
+        "blunder": 0.07,
+        "noise": 0.3
+      },
+      {
+        "maxElo": 99999,
+        "depth": 3,
+        "blunder": 0.03,
+        "noise": 0.1
+      }
+    ],
+    "timeBudgetMs": 250,
+    "weights": {
+      "win": 100000,
+      "mobility": 0.05,
+      "immune": 0.4,
+      "phalanxPair": 0.3,
+      "fortressHome": 0.3,
+      "arenaCenter": 0.4,
+      "objective": 6,
+      "stall": 0.25,
+      "inCheck": 0.5
+    }
   },
   "setup": {
     "backRank": [
@@ -238,5 +284,8 @@
   "save": {
     "version": 1,
     "key": "gambit-spire-save"
+  },
+  "settings": {
+    "key": "gambit-spire-settings"
   }
 }

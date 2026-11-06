@@ -1,5 +1,6 @@
 import tuning from '../data/tuning.json';
 import { PASSIVES } from '../passives';
+import { eloForNode } from '../ai/elo';
 import type { FightOpts } from '../rules/board';
 import type { Kind } from '../rules/types';
 import { findNode, generateMap, type MapNode, type RunMap } from './map';
@@ -51,7 +52,7 @@ export function reachable(run: RunState): MapNode[] {
 export function fightOpts(node: MapNode): { court: string | null; enemyPassives: string[]; opts: FightOpts } {
   if (node.type === 'boss') {
     const b = tuning.run.boss;
-    return { court: node.court, enemyPassives: b.passives, opts: { enemyArmy: b.army as Kind[], capturesToWin: Infinity, turnLimit: b.turnLimit, checkmate: b.checkmate } };
+    return { court: node.court, enemyPassives: b.passives, opts: { enemyArmy: b.army as Kind[], capturesToWin: Infinity, turnLimit: b.turnLimit, checkmate: b.checkmate, aiElo: eloForNode(node.row, 'boss') } };
   }
   const tiers = tuning.run.enemyTiers;
   const base = Math.floor((node.row / tuning.run.rows) * tiers.length);
@@ -59,10 +60,10 @@ export function fightOpts(node: MapNode): { court: string | null; enemyPassives:
     const e = tuning.run.elite;
     const enemyArmy = tiers[Math.min(tiers.length - 1, base + e.tierBoost)] as Kind[];
     const passive = e.passivePool[(node.row * 7 + node.col) % e.passivePool.length];
-    return { court: node.court, enemyPassives: [passive], opts: { enemyArmy, capturesToWin: Infinity, turnLimit: e.turnLimit, checkmate: e.checkmate } };
+    return { court: node.court, enemyPassives: [passive], opts: { enemyArmy, capturesToWin: Infinity, turnLimit: e.turnLimit, checkmate: e.checkmate, aiElo: eloForNode(node.row, 'elite') } };
   }
   const enemyArmy = tiers[Math.min(tiers.length - 1, base)] as Kind[];
-  return { court: node.court, enemyPassives: [], opts: { enemyArmy, capturesToWin: Math.min(tuning.objective.capturesToWin, enemyArmy.length - 1) } };
+  return { court: node.court, enemyPassives: [], opts: { enemyArmy, capturesToWin: Math.min(tuning.objective.capturesToWin, enemyArmy.length - 1), aiElo: eloForNode(node.row, 'fight') } };
 }
 
 /** Three distinct reward offers. Elites offer passives first and bonus gold. */

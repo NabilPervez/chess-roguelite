@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { chooseMove } from '../ai/greedy';
+import { chooseMoveElo } from '../ai/engine';
+import tuning from '../data/tuning.json';
 import { COURTS, PASSIVES, resolveHooks } from '../passives';
 import { applyMove } from '../rules/game';
 import { inCheck, legalMoves } from '../rules/moves';
@@ -19,7 +20,7 @@ export function Fight({ initial, title, seed, onEnd, onProgress }: { initial: Ga
   useEffect(() => {
     if (game.turn !== 'enemy' || game.status !== 'playing') return;
     const t = setTimeout(() => {
-      const m = chooseMove(game, hooks, rand.current);
+      const m = chooseMoveElo(game, hooks, game.aiElo ?? tuning.ai.elo.start, rand.current);
       if (m) setGame(applyMove(game, m, hooks));
     }, 380);
     return () => clearTimeout(t);
@@ -42,17 +43,17 @@ export function Fight({ initial, title, seed, onEnd, onProgress }: { initial: Ga
   const turnsLeft = game.turnLimit - game.turnNumber;
   return (
     <main className="shell">
-      <span className="eyebrow">{title}</span>
+      <span className="eyebrow">{title}{game.aiElo ? ` · Enemy ~${game.aiElo} Elo` : ''}</span>
       <section className="hud" aria-live="polite">
         <div className="stat"><span className="eyebrow">Objective</span>
           {game.checkmate ? <><b>Mate</b><small>trap the king</small></> : kingHunt ? <><b>King</b><small>capture it</small></> : <><b>{Math.min(game.progress, game.capturesToWin)}/{game.capturesToWin}</b><small>captures</small></>}</div>
         <div className="stat"><span className="eyebrow">Turns left</span><b className={turnsLeft <= 5 ? 'warn' : ''}>{turnsLeft}</b><small>of {game.turnLimit}</small></div>
-        <div className="stat"><span className="eyebrow">To move</span><b>{game.turn === 'player' ? 'You' : 'Enemy'}</b><small className={checked ? 'warn' : ''}>{checked ? 'in check!' : game.turn === 'enemy' ? 'thinking…' : 'tap a piece'}</small></div>
+        <div className="stat"><span className="eyebrow">To move</span><b>{game.turn === 'player' ? 'You' : 'Enemy'}</b><small className={checked ? 'warn' : ''} title={`Enemy rating ${game.aiElo ?? ''}`}>{checked ? 'in check!' : game.turn === 'enemy' ? 'thinking…' : 'tap a piece'}</small></div>
       </section>
       <div className="rules">
         {court && <span className="chip court-chip">{COURT_ICON[court.id]} {court.name}: {court.desc}</span>}
         {game.playerPassives.map((id) => <span key={id} className="chip">✦ {PASSIVES[id].name}: {PASSIVES[id].desc}</span>)}
-        {game.enemyPassives.map((id) => <span key={id} className="chip enemy-chip">☠ Enemy {PASSIVES[id].name}: {PASSIVES[id].desc}</span>)}
+        {game.enemyPassives.map((id) => <span key={id} className="chip enemy-chip">☠ Enemy {PASSIVES[id].name}: {PASSIVES[id].desc.replace(/\bYour\b/g, 'Their').replace(/\byour\b/g, 'their')}</span>)}
       </div>
       <Board game={game} sel={sel} moves={moves} onTap={tap} />
       <p className="legend"><i className="dot move" /> move <i className="dot cap" /> capture <i className="dot tag" /> passive or court</p>

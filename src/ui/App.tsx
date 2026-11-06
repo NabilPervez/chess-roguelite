@@ -10,6 +10,8 @@ import { clearSave, loadSave, writeSave } from '../run/save';
 import type { GameState } from '../rules/types';
 import { COURT_ICON, Fight } from './Fight';
 import { MapView } from './MapView';
+import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
+import { SettingsPanel } from './SettingsPanel';
 
 type Screen = { kind: 'start' } | { kind: 'map' } | { kind: 'fight'; node: MapNode } | { kind: 'boss'; node: MapNode } | { kind: 'reward'; offers: Reward[] } | { kind: 'rest' } | { kind: 'shop'; items: ShopItem[]; bought: number[] } | { kind: 'event'; id: string; result?: string } | { kind: 'end' };
 const PIECE: Record<string, string> = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟' };
@@ -26,6 +28,23 @@ export function App() {
   const [mode, setMode] = useState<RunMode>('draft');
   const [saved, setSaved] = useState(() => loadSave());
   const fightRef = useRef<{ nodeId: string; game: GameState } | undefined>(undefined);
+  const [settings, setSettings] = useState<Settings>(() => loadSettings());
+  const [showSettings, setShowSettings] = useState(false);
+  const [prefersDark, setPrefersDark] = useState(() => typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches);
+  useEffect(() => { applySettings(settings); saveSettings(settings); }, [settings, prefersDark]);
+  useEffect(() => {
+    if (typeof matchMedia !== 'function') return;
+    const mq = matchMedia('(prefers-color-scheme: dark)');
+    const on = () => setPrefersDark(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  const gear = (
+    <>
+      <div className="topbar"><button className="gear" aria-label="Settings" onClick={() => setShowSettings(true)}>⚙</button></div>
+      {showSettings && <SettingsPanel value={settings} prefersDark={prefersDark} onChange={setSettings} onClose={() => setShowSettings(false)} />}
+    </>
+  );
   useEffect(() => { rand.current = mulberry32(seed); setChoices(startingPassiveChoices(mulberry32(seed))); }, [seed]);
 
   // Autosave after every step of a live run; a finished run clears the save.
@@ -53,6 +72,7 @@ export function App() {
 
   if (screen.kind === 'start') return (
     <main className="shell">
+      {gear}
       <header className="title"><span className="eyebrow">New run · Act 1</span><h1>Gambit Spire</h1></header>
       {saved && (
         <section className="card">
@@ -102,6 +122,7 @@ export function App() {
 
   if (screen.kind === 'map') return (
     <main className="shell">
+      {gear}
       <header className="title"><span className="eyebrow">Act 1 · choose your path</span><h1>The Spire</h1></header>
       {army}
       <div className="rules">{run.passives.map((id) => <span key={id} className="chip">✦ {PASSIVES[id].name}: {PASSIVES[id].desc}</span>)}</div>

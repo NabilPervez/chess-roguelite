@@ -50,6 +50,7 @@ export interface FightOpts {
   capturesToWin?: number;
   turnLimit?: number;
   checkmate?: boolean;
+  aiElo?: number;
 }
 
 export function newGame(court: string | null, playerPassives: string[], enemyPassives: string[] = [], opts: FightOpts = {}): GameState {
@@ -64,6 +65,7 @@ export function newGame(court: string | null, playerPassives: string[], enemyPas
     capturesToWin: opts.capturesToWin ?? tuning.objective.capturesToWin,
     turnLimit: opts.turnLimit ?? tuning.objective.turnLimit,
     checkmate: opts.checkmate ?? false,
+    aiElo: opts.aiElo,
     court, playerPassives, enemyPassives, log: [],
   };
 }

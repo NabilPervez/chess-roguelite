@@ -12,6 +12,18 @@ Pick a starting passive → climb a 15-row map → each fight node shows its cou
 
 **Passives (12):** Phalanx · Cavalry Charge · Royal Stride · Bounty · Lancer · Sapper · Outflank · Zealot · Fortress · Headhunter · Skirmish · Amazon.
 
+## Enemy AI (Sprint 5)
+`src/ai/engine.ts` is a small alpha-beta search that plays through the real rules, so every court and passive
+(Amazon, Mud, Ice, Phalanx…) is priced in. Its evaluation adds terms for *using* passives: keep Phalanx pawns paired,
+keep Fortress rooks home, hold Arena centre squares, and protect against the player's capture objective.
+
+Difficulty is an Elo per node (`src/ai/elo.ts`, numbers in `tuning.json → ai`): 300 on row 1, +30 per row, +75 for
+elites, 800 for the boss. The rating picks search depth, a blunder rate and move noise. The fight header shows it.
+
+## Settings
+Gear button on the start and map screens: art style (Obsidian Court, Gilded Atlas, Paper Toy) and theme
+(Light / Dark / System). Saved separately from the run save.
+
 ## Develop
 ```
 npm install
