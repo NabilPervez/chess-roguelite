@@ -5,6 +5,7 @@ export interface Piece { id: string; side: Side; kind: Kind; moved: boolean }
 export type Board = (Piece | null)[][];
 export interface Move { from: Sq; to: Sq; capture: boolean; tag?: string }
 export type Status = 'playing' | 'won' | 'lost';
+export type TileKind = 'protective' | 'trap' | 'phantom' | 'crumbling' | 'gold' | 'hole';
 
 export interface GameState {
   board: Board;
@@ -26,6 +27,18 @@ export interface GameState {
   playerPassives: string[];
   enemyPassives: string[];
   log: string[];
+  /** Effect squares keyed "r,c". */
+  tiles?: Record<string, TileKind>;
+  /** Piece id -> own turns it must sit out. */
+  frozen?: Record<string, number>;
+  /** Piece ids that can't be captured until their side moves again. */
+  shielded?: string[];
+  /** Gold the player earned during this fight. */
+  goldEarned?: number;
+  /** Once-per-fight effects already spent, e.g. "swap:player". */
+  used?: string[];
+  /** Sides whose next capture is boosted by Vengeance. */
+  vengeance?: Side[];
 }
 
 export interface MoveCtx { state: GameState; piece: Piece; from: Sq }
@@ -43,6 +56,14 @@ export interface Hook {
   canBeCaptured?: (state: GameState, target: Piece, at: Sq) => boolean;
   /** Adjust how much one capture counts toward the objective. */
   objectiveWorth?: (capturer: Piece, captured: Piece, worth: number) => number;
+  /** Owner's pawns promote one rank early. */
+  promoteEarly?: boolean;
+  /** React to any move (either side) after it lands; `owner` is the side holding this passive. */
+  afterMove?: (next: GameState, ctx: AfterCtx) => GameState;
+  /** Adjust the board at fight start for the owner. */
+  onSetup?: (state: GameState, owner: Side) => GameState;
 }
+
+export interface AfterCtx { prev: GameState; move: Move; mover: Piece; captured: Piece | null; promoted: boolean; owner: Side }
 
 export interface HookSet { court: Hook | null; player: Hook[]; enemy: Hook[] }

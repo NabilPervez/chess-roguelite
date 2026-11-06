@@ -14,10 +14,23 @@ import { headhunter } from './headhunter';
 import { outflank } from './outflank';
 import { skirmish } from './skirmish';
 import { zealot } from './zealot';
+import { martyr } from './martyr';
+import { promotionRush } from './promotionRush';
+import { vengeance } from './vengeance';
+import { swap } from './swap';
+import { tithe } from './tithe';
+import { scavenger } from './scavenger';
+import { coronation } from './coronation';
+import { forkStrike } from './forkStrike';
+import { siegeRook } from './siegeRook';
+import { caltrops } from './caltrops';
+import { bulwark } from './bulwark';
+import { snare } from './snare';
 
 export const COURTS: Record<string, Hook> = { mud, ice, arena };
 export const PASSIVES: Record<string, Hook> = { phalanx, cavalryCharge, royalGuard, bounty, lancer, sapper,
   outflank, zealot, fortress, headhunter, skirmish, amazon,
+  martyr, promotionRush, vengeance, swap, tithe, scavenger, coronation, forkStrike, siegeRook, caltrops, bulwark, snare,
 };
 
 export const resolveHooks = (s: Pick<GameState, 'court' | 'playerPassives' | 'enemyPassives'>): HookSet => ({

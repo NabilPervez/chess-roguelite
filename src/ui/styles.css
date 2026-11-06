@@ -135,3 +135,11 @@ small.warn { font-weight: 600; }
 .seg { display: flex; gap: 6px; margin-top: 10px; }
 .seg button { flex: 1; min-height: 44px; background: transparent; border: 1px solid var(--line); border-radius: 10px; }
 .seg button.on { border-color: var(--accent-2); background: color-mix(in srgb, var(--accent-2) 18%, var(--bg)); }
+
+/* Sprint 6a: effect tiles */
+.sq.tile-hole { background: var(--scrim); }
+.tile-icon { position: absolute; left: 4px; bottom: 2px; font-size: 13px; line-height: 1; color: var(--muted); z-index: 2; pointer-events: none; }
+.sq.tile-gold .tile-icon, .sq.tile-protective .tile-icon { color: var(--accent, currentColor); }
+.sq.tile-trap .tile-icon, .sq.tile-crumbling .tile-icon { color: var(--danger); }
+.pc .badge { position: absolute; right: -8px; top: -6px; font-size: 13px; font-style: normal; }
+.pc.frozen { opacity: .55; }

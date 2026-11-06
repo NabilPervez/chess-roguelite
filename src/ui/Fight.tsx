@@ -7,8 +7,10 @@ import { inCheck, legalMoves } from '../rules/moves';
 import type { GameState, Move, Sq } from '../rules/types';
 import { mulberry32 } from '../run/rng';
 import { Board } from './Board';
+import { TILE_INFO } from '../rules/tiles';
+import type { TileKind } from '../rules/types';
 
-export function Fight({ initial, title, seed, onEnd, onProgress }: { initial: GameState; title: string; seed: number; onEnd: (won: boolean) => void; onProgress?: (g: GameState) => void }) {
+export function Fight({ initial, title, seed, onEnd, onProgress }: { initial: GameState; title: string; seed: number; onEnd: (won: boolean, goldEarned: number) => void; onProgress?: (g: GameState) => void }) {
   const [game, setGame] = useState(initial);
   const [sel, setSel] = useState<Sq | null>(null);
   const [started] = useState(Date.now());
@@ -53,6 +55,7 @@ export function Fight({ initial, title, seed, onEnd, onProgress }: { initial: Ga
       <div className="rules">
         {court && <span className="chip court-chip">{COURT_ICON[court.id]} {court.name}: {court.desc}</span>}
         {game.playerPassives.map((id) => <span key={id} className="chip">✦ {PASSIVES[id].name}: {PASSIVES[id].desc}</span>)}
+        {[...new Set(Object.values(game.tiles ?? {}))].map((t) => <span key={t} className="chip tile-chip">{TILE_INFO[t as TileKind].icon} {TILE_INFO[t as TileKind].name}: {TILE_INFO[t as TileKind].desc}</span>)}
         {game.enemyPassives.map((id) => <span key={id} className="chip enemy-chip">☠ Enemy {PASSIVES[id].name}: {PASSIVES[id].desc.replace(/\bYour\b/g, 'Their').replace(/\byour\b/g, 'their')}</span>)}
       </div>
       <Board game={game} sel={sel} moves={moves} onTap={tap} />
@@ -64,8 +67,9 @@ export function Fight({ initial, title, seed, onEnd, onProgress }: { initial: Ga
             <span className="eyebrow">{game.status === 'won' ? 'Victory' : 'Defeat'}</span>
             <h2>{game.status === 'won' ? 'Fight won' : 'Run over'}</h2>
             <p>{game.endReason}</p>
+            {(game.goldEarned ?? 0) > 0 && <p>Earned ◈{game.goldEarned} this fight.</p>}
             <p className="meta">Fight time {Math.floor(elapsed / 60000)}m {Math.round((elapsed % 60000) / 1000)}s · {game.turnNumber} turns</p>
-            <div className="row"><button className="primary" onClick={() => onEnd(game.status === 'won')}>{game.status === 'won' ? 'Claim reward' : 'Continue'}</button></div>
+            <div className="row"><button className="primary" onClick={() => onEnd(game.status === 'won', game.goldEarned ?? 0)}>{game.status === 'won' ? 'Claim reward' : 'Continue'}</button></div>
           </div>
         </div>
       )}

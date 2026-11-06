@@ -1,4 +1,5 @@
 import { at, dist, forward, inBounds, N } from './board';
+import { isFrozen, isShielded, key } from './tiles';
 import type { Board, GameState, Hook, HookSet, Move, Piece, Side, Sq } from './types';
 
 const ORTHO = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -64,6 +65,7 @@ export const sideHooks = (h: HookSet, side: Piece['side']) => (side === 'player'
 function pseudoMoves(state: GameState, from: Sq, hooks: HookSet): Move[] {
   const p = at(state.board, from);
   if (!p) return [];
+  if (isFrozen(state, p)) return [];
   const own = sideHooks(hooks, p.side);
   let moves = baseMoves(state.board, from);
   for (const h of own) if (h.onMoveGen) moves = h.onMoveGen({ state, piece: p, from }, moves);
@@ -76,10 +78,14 @@ function pseudoMoves(state: GameState, from: Sq, hooks: HookSet): Move[] {
   for (const h of own) if (h.moveCap) cap = h.moveCap(p, cap);
   moves = moves.filter((m) => dist(m.from, m.to) <= cap);
 
-  // Capture immunity: the target's own passives (and the court) decide.
+  // Holes can't be stood on.
+  if (state.tiles) moves = moves.filter((m) => state.tiles![key(m.to)] !== 'hole');
+
+  // Capture immunity: shields, plus the target's own passives (and the court).
   moves = moves.filter((m) => {
     if (!m.capture) return true;
     const target = at(state.board, m.to)!;
+    if (isShielded(state, target)) return false;
     const guards = [...(hooks.court ? [hooks.court] : []), ...sideHooks(hooks, target.side)];
     return guards.every((h) => !h.canBeCaptured || h.canBeCaptured(state, target, m.to));
   });
@@ -95,12 +101,21 @@ function pseudoMoves(state: GameState, from: Sq, hooks: HookSet): Move[] {
 }
 
 /** Board after a move, without bookkeeping (used for check tests). */
-export function previewBoard(b: Board, m: Move): Board {
+export function previewBoard(b: Board, m: Move, hooks?: HookSet): Board {
   const board = b.map((row) => row.slice());
   const mover = board[m.from.r][m.from.c]!;
-  board[m.from.r][m.from.c] = null;
-  board[m.to.r][m.to.c] = mover.kind === 'P' && (m.to.r === N - 1 || m.to.r === 0) ? { ...mover, kind: 'Q' } : mover;
+  board[m.from.r][m.from.c] = m.tag === 'swap' ? board[m.to.r][m.to.c] : null;
+  board[m.to.r][m.to.c] = promotes(mover, m.to, hooks) ? { ...mover, kind: 'Q' } : mover;
   return board;
+}
+
+/** Pawns promote on the far rank, or one rank early with Promotion Rush. */
+export function promotes(p: Piece, to: Sq, hooks?: HookSet): boolean {
+  if (p.kind !== 'P') return false;
+  const early = !!hooks && sideHooks(hooks, p.side).some((h) => h.promoteEarly);
+  const far = p.side === 'player' ? N - 1 : 0;
+  const step = p.side === 'player' ? -1 : 1;
+  return to.r === far || (early && to.r === far + step);
 }
 
 /** True if `side`'s king could be captured by the other side right now. */
@@ -124,7 +139,7 @@ export function legalMoves(state: GameState, from: Sq, hooks: HookSet): Move[] {
   if (!p || p.side !== state.turn || state.status !== 'playing') return [];
   const moves = pseudoMoves(state, from, hooks);
   if (!state.checkmate) return moves;
-  return moves.filter((m) => !inCheck({ ...state, board: previewBoard(state.board, m) }, p.side, hooks));
+  return moves.filter((m) => !inCheck({ ...state, board: previewBoard(state.board, m, hooks) }, p.side, hooks));
 }
 
 export function allLegalMoves(state: GameState, hooks: HookSet): Move[] {

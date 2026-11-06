@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import tuning from '../data/tuning.json';
-import { COURTS, PASSIVES } from '../passives';
+import { COURTS, PASSIVES, resolveHooks } from '../passives';
 import { newGame } from '../rules/board';
+import { setupFight } from '../rules/game';
+import { seedTiles } from '../rules/tiles';
+import type { TileKind } from '../rules/types';
 import type { Kind } from '../rules/types';
 import type { MapNode } from '../run/map';
 import { mulberry32 } from '../run/rng';
@@ -161,15 +164,21 @@ export function App() {
   if (screen.kind === 'fight') {
     const { court, enemyPassives, opts } = fightOpts(screen.node);
     const resumed = fightRef.current?.nodeId === screen.node.id ? fightRef.current.game : null;
-    const initial = resumed ?? newGame(court, run.passives, enemyPassives, { ...opts, playerArmy: run.army });
+    const fresh = () => {
+      const g = newGame(court, run.passives, enemyPassives, { ...opts, playerArmy: run.army });
+      const n = screen.node.type === 'fight' ? tuning.tiles.perFight : tuning.tiles.elitePerFight;
+      const seeded = seedTiles(g, mulberry32(seed + screen.node.row * 131 + screen.node.col * 17), n, tuning.tiles.pool as TileKind[]);
+      return setupFight(seeded, resolveHooks(seeded));
+    };
+    const initial = resumed ?? fresh();
     const node = screen.node;
     return <Fight key={node.id} initial={initial} seed={seed + node.row * 31 + node.col + (resumed?.turnNumber ?? 0)}
       title={node.type === 'boss' ? `Boss · ${tuning.run.boss.name} — checkmate` : node.type === 'elite' ? `Row ${node.row + 1} · Elite — checkmate` : `Row ${node.row + 1} · Fight`}
       onProgress={(game) => { fightRef.current = { nodeId: node.id, game }; if (game.turn === 'player') persist(run, screen); }}
-      onEnd={(won) => {
+      onEnd={(won, earned) => {
         fightRef.current = undefined;
         if (!won) { setRun({ ...run, status: 'lost' }); setScreen({ kind: 'end' }); return; }
-        const r = { ...run, fightsWon: run.fightsWon + 1 };
+        const r = { ...run, fightsWon: run.fightsWon + 1, gold: run.gold + earned };
         if (screen.node.type === 'boss') { setRun({ ...r, status: 'won' }); setScreen({ kind: 'end' }); return; }
         setRun(r); setScreen({ kind: 'reward', offers: rollRewards(r, rand.current, screen.node.type === 'elite') });
       }} />;

@@ -17,7 +17,7 @@ function setup(passives: string[], pieces: [Side, Kind, number, number][], enemy
 const dests = (s: GameState, r: number, c: number) => legalMoves(s, { r, c }, resolveHooks(s)).map((m) => `${m.to.r},${m.to.c}`).sort();
 
 describe('sprint 3 passives', () => {
-  it('there are 12 passives', () => expect(Object.keys(PASSIVES)).toHaveLength(12));
+  it('there are 24 passives', () => expect(Object.keys(PASSIVES)).toHaveLength(24));
 
   it('Outflank: knight steps 1 straight, incl. capture', () => {
     const s = setup(['outflank'], [['player', 'N', 2, 2], ['enemy', 'P', 3, 2]]);

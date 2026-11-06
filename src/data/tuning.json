@@ -34,6 +34,27 @@
     "maxActive": 3,
     "headhunter": {
       "bonus": 1
+    },
+    "tithe": {
+      "gold": 3
+    },
+    "bugCatcher": {
+      "gold": 2
+    },
+    "raceFlag": {
+      "gold": 5
+    },
+    "vengeance": {
+      "bonus": 1
+    },
+    "silverFork": {
+      "minTargets": 2
+    },
+    "martyr": {
+      "freezeTurns": 1
+    },
+    "makibishi": {
+      "traps": 2
     }
   },
   "ai": {
@@ -82,7 +103,8 @@
       "arenaCenter": 0.4,
       "objective": 6,
       "stall": 0.25,
-      "inCheck": 0.5
+      "inCheck": 0.5,
+      "frozen": 0.5
     }
   },
   "setup": {
@@ -287,5 +309,17 @@
   },
   "settings": {
     "key": "gambit-spire-settings"
+  },
+  "tiles": {
+    "goldValue": 10,
+    "perFight": 3,
+    "elitePerFight": 4,
+    "pool": [
+      "protective",
+      "trap",
+      "phantom",
+      "crumbling",
+      "gold"
+    ]
   }
 }
