@@ -249,12 +249,12 @@ small.warn { font-weight: 600; }
 .shop-body { display: flex; flex-direction: column; gap: 14px; }
 .shop-sec .eyebrow { margin-bottom: 8px; }
 .shop-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.shop-grid.passive { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.shop-grid.t-passive { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .shop-card { position: relative; }
 .shop-buy { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px 26px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; text-align: center; }
 .shop-buy:disabled { opacity: .5; cursor: not-allowed; }
 .shop-buy .art { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 10px; background: var(--sq-light); color: var(--player); font-size: 30px; }
-.shop-card.passive .art, .shop-card.relic .art, .shop-card.remove .art { background: var(--bg); color: var(--accent); font-size: 22px; width: 40px; height: 40px; }
+.shop-card.t-passive .art, .shop-card.t-relic .art, .shop-card.t-remove .art { background: var(--bg); color: var(--accent); font-size: 22px; width: 40px; height: 40px; }
 .shop-buy b { font-size: 14px; } .shop-buy small { color: var(--muted); font-size: 12px; line-height: 1.25; }
 .price-tag { position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); background: var(--accent); color: var(--on-accent); border-radius: 8px; padding: 2px 10px; font-weight: 700; font-size: 13px; white-space: nowrap; }
 .shop-card.sold .price-tag { background: var(--line); color: var(--muted); }

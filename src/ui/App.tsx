@@ -270,7 +270,7 @@ export function App() {
         : it.type === 'relic' ? { icon: RELICS[it.id].icon, name: RELICS[it.id].name, desc: RELICS[it.id].desc }
         : { icon: '✂', name: 'Remove a passive', desc: 'Clear a slot.' };
       return (
-        <div key={i} className={`shop-card ${it.type}${sold ? ' sold' : ''}`}>
+        <div key={i} className={`shop-card t-${it.type}${sold ? ' sold' : ''}`}>
           <button className="shop-buy" disabled={off} onClick={() => (needsTarget(it) ? setShopPick({ item: it, i }) : purchase(it, i))}
             aria-label={`Buy ${head.name} for ${it.price} gold`}>
             <span className="art" aria-hidden="true">{head.icon}</span><b>{head.name}</b><small>{head.desc}</small>
@@ -283,7 +283,7 @@ export function App() {
     };
     const group = (t: ShopItem['type'][], label: string) => {
       const list = items.map((it, i) => [it, i] as const).filter(([it]) => t.includes(it.type));
-      return list.length ? <section className="shop-sec"><span className="eyebrow">{label}</span><div className={`shop-grid ${t[0]}`}>{list.map(([it, i]) => card(it, i))}</div></section> : null;
+      return list.length ? <section className="shop-sec"><span className="eyebrow">{label}</span><div className={`shop-grid t-${t[0]}`}>{list.map(([it, i]) => card(it, i))}</div></section> : null;
     };
     return (
       <main className="shop-screen">
