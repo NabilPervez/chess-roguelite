@@ -31,7 +31,10 @@
     "bounty": {
       "pawnCaptureWorth": 2
     },
-    "maxActive": 3
+    "maxActive": 3,
+    "headhunter": {
+      "bonus": 1
+    }
   },
   "ai": {
     "seed": 1337
@@ -58,7 +61,7 @@
     "rows": 15,
     "minNodes": 2,
     "maxNodes": 4,
-    "restChance": 0.2,
+    "restChance": 0.12,
     "courts": [
       "mud",
       "ice",
@@ -149,6 +152,41 @@
       ],
       "turnLimit": 40,
       "court": "mud"
+    },
+    "shopChance": 0.07,
+    "eventChance": 0.12,
+    "eliteChance": 0.12,
+    "eliteMinRow": 4,
+    "elite": {
+      "turnLimit": 25,
+      "tierBoost": 1,
+      "passivePool": [
+        "phalanx",
+        "fortress",
+        "lancer",
+        "skirmish",
+        "outflank"
+      ],
+      "goldBonus": 30
+    },
+    "shop": {
+      "passivePrice": 60,
+      "piecePrices": {
+        "N": 40,
+        "B": 40,
+        "R": 60,
+        "Q": 100
+      },
+      "removePrice": 40,
+      "passiveOffers": 2,
+      "pieceOffers": 2
+    },
+    "events": {
+      "smithCost": 50,
+      "deserterGold": 40,
+      "shrineGold": 35,
+      "gamblerStake": 30,
+      "gamblerWinChance": 0.5
     }
   }
 }

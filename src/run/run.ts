@@ -39,15 +39,26 @@ export function fightOpts(node: MapNode): { court: string | null; enemyPassives:
     return { court: node.court, enemyPassives: tuning.run.boss.passives, opts: { enemyArmy: tuning.run.boss.army as Kind[], capturesToWin: Infinity, turnLimit: tuning.run.boss.turnLimit } };
   }
   const tiers = tuning.run.enemyTiers;
-  const tier = Math.min(tiers.length - 1, Math.floor((node.row / tuning.run.rows) * tiers.length));
-  const enemyArmy = tiers[tier] as Kind[];
+  const base = Math.floor((node.row / tuning.run.rows) * tiers.length);
+  if (node.type === 'elite') {
+    const e = tuning.run.elite;
+    const enemyArmy = tiers[Math.min(tiers.length - 1, base + e.tierBoost)] as Kind[];
+    const passive = e.passivePool[(node.row * 7 + node.col) % e.passivePool.length];
+    return { court: node.court, enemyPassives: [passive], opts: { enemyArmy, capturesToWin: Infinity, turnLimit: e.turnLimit } };
+  }
+  const enemyArmy = tiers[Math.min(tiers.length - 1, base)] as Kind[];
   return { court: node.court, enemyPassives: [], opts: { enemyArmy, capturesToWin: Math.min(tuning.objective.capturesToWin, enemyArmy.length - 1) } };
 }
 
-/** Three distinct reward offers. */
-export function rollRewards(run: RunState, rand: Rand): Reward[] {
+/** Three distinct reward offers. Elites offer passives first and bonus gold. */
+export function rollRewards(run: RunState, rand: Rand, elite = false): Reward[] {
   const unowned = Object.keys(PASSIVES).filter((id) => !run.passives.includes(id));
   const out: Reward[] = [];
+  if (elite) {
+    for (const id of sample(rand, unowned, 2)) out.push({ type: 'passive', id });
+    out.push({ type: 'gold', amount: tuning.run.rewardGold + tuning.run.elite.goldBonus });
+    return out;
+  }
   if (unowned.length) out.push({ type: 'passive', id: pick(rand, unowned) });
   if (run.army.length < tuning.run.pieceCap) out.push({ type: 'piece', kind: pick(rand, tuning.run.rewardPieces) as Kind });
   out.push({ type: 'gold', amount: tuning.run.rewardGold });
@@ -75,3 +86,83 @@ export function promotePawn(run: RunState, to: Kind): RunState {
 }
 
 export const dropPassive = (run: RunState, id: string): RunState => ({ ...run, passives: run.passives.filter((p) => p !== id) });
+
+// ---------- Shop ----------
+export type ShopItem =
+  | { type: 'passive'; id: string; price: number }
+  | { type: 'piece'; kind: Kind; price: number }
+  | { type: 'remove'; price: number };
+
+export function rollShop(run: RunState, rand: Rand): ShopItem[] {
+  const s = tuning.run.shop;
+  const prices = s.piecePrices as Record<string, number>;
+  const unowned = Object.keys(PASSIVES).filter((id) => !run.passives.includes(id));
+  return [
+    ...sample(rand, unowned, s.passiveOffers).map((id) => ({ type: 'passive' as const, id, price: s.passivePrice })),
+    ...sample(rand, Object.keys(prices), s.pieceOffers).map((k) => ({ type: 'piece' as const, kind: k as Kind, price: prices[k] })),
+    { type: 'remove', price: s.removePrice },
+  ];
+}
+
+/** Buy an item. Throws if unaffordable. `target` is the passive to replace (passive at cap) or remove. */
+export function buy(run: RunState, item: ShopItem, target?: string): RunState {
+  if (run.gold < item.price) throw new Error('Not enough gold');
+  const paid = { ...run, gold: run.gold - item.price };
+  if (item.type === 'remove') {
+    if (!target || !run.passives.includes(target)) throw new Error('Choose a passive to remove');
+    return dropPassive(paid, target);
+  }
+  if (item.type === 'piece') {
+    if (run.army.length >= tuning.run.pieceCap) throw new Error('Army is full');
+    return { ...paid, army: [...paid.army, item.kind] };
+  }
+  return applyReward(paid, { type: 'passive', id: item.id }, target);
+}
+
+// ---------- Events ----------
+export interface EventChoice { label: string; desc: string; ok: boolean }
+export interface RunEvent { id: string; title: string; text: string; choices: EventChoice[] }
+
+const EV = tuning.run.events;
+export const EVENT_IDS = ['smith', 'deserter', 'shrine', 'gambler'] as const;
+
+export function describeEvent(id: string, run: RunState): RunEvent {
+  const pawn = run.army.includes('P');
+  const room = run.army.length < tuning.run.pieceCap;
+  switch (id) {
+    case 'smith': return { id, title: 'The Wandering Smith', text: 'A smith offers to reforge one of your pawns.', choices: [
+      { label: `Pay ◈ ${EV.smithCost}`, desc: 'A pawn becomes a queen.', ok: pawn && run.gold >= EV.smithCost },
+      { label: 'Walk on', desc: 'Nothing happens.', ok: true }] };
+    case 'deserter': return { id, title: 'A Deserter', text: 'An enemy soldier wants to switch sides — or sell you his pay.', choices: [
+      { label: 'Recruit him', desc: 'Gain a pawn.', ok: room },
+      { label: 'Take the gold', desc: `Gain ◈ ${EV.deserterGold}.`, ok: true }] };
+    case 'shrine': return { id, title: 'Forgotten Shrine', text: 'An old shrine hums with power.', choices: [
+      { label: 'Pray', desc: 'Gain a random passive (if you have room).', ok: run.passives.length < tuning.passives.maxActive },
+      { label: 'Loot it', desc: `Lose a pawn, gain ◈ ${EV.shrineGold}.`, ok: pawn && run.army.length > 1 }] };
+    default: return { id, title: 'The Gambler', text: 'A coin spins on a crate. Heads, you double up.', choices: [
+      { label: `Bet ◈ ${EV.gamblerStake}`, desc: `50%: win ◈ ${EV.gamblerStake}, else lose it.`, ok: run.gold >= EV.gamblerStake },
+      { label: 'Decline', desc: 'Nothing happens.', ok: true }] };
+  }
+}
+
+export const rollEvent = (rand: Rand) => pick(rand, [...EVENT_IDS]);
+
+/** Resolve an event choice. Returns the new run and a one-line result. */
+export function resolveEvent(run: RunState, id: string, choice: number, rand: Rand): { run: RunState; result: string } {
+  if (!describeEvent(id, run).choices[choice]?.ok) throw new Error('Choice not available');
+  if (id === 'smith') return choice === 0
+    ? { run: { ...promotePawn(run, 'Q'), gold: run.gold - EV.smithCost }, result: 'Your pawn is now a queen.' }
+    : { run, result: 'You walk on.' };
+  if (id === 'deserter') return choice === 0
+    ? { run: { ...run, army: [...run.army, 'P'] }, result: 'A pawn joins you.' }
+    : { run: { ...run, gold: run.gold + EV.deserterGold }, result: `+◈ ${EV.deserterGold}` };
+  if (id === 'shrine') {
+    if (choice === 1) { const a = [...run.army]; a.splice(a.indexOf('P'), 1); return { run: { ...run, army: a, gold: run.gold + EV.shrineGold }, result: `A pawn is lost. +◈ ${EV.shrineGold}` }; }
+    const unowned = Object.keys(PASSIVES).filter((p) => !run.passives.includes(p));
+    const got = pick(rand, unowned);
+    return { run: { ...run, passives: [...run.passives, got] }, result: `You gain ${PASSIVES[got].name}.` };
+  }
+  if (choice === 1) return { run, result: 'You keep your gold.' };
+  const win = rand() < EV.gamblerWinChance;
+  return { run: { ...run, gold: run.gold + (win ? EV.gamblerStake : -EV.gamblerStake) }, result: win ? `Heads! +◈ ${EV.gamblerStake}` : `Tails. −◈ ${EV.gamblerStake}` };
+}

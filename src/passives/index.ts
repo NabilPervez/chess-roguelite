@@ -8,9 +8,17 @@ import { mud } from './mud';
 import { phalanx } from './phalanx';
 import { royalGuard } from './royalGuard';
 import { sapper } from './sapper';
+import { amazon } from './amazon';
+import { fortress } from './fortress';
+import { headhunter } from './headhunter';
+import { outflank } from './outflank';
+import { skirmish } from './skirmish';
+import { zealot } from './zealot';
 
 export const COURTS: Record<string, Hook> = { mud, ice, arena };
-export const PASSIVES: Record<string, Hook> = { phalanx, cavalryCharge, royalGuard, bounty, lancer, sapper };
+export const PASSIVES: Record<string, Hook> = { phalanx, cavalryCharge, royalGuard, bounty, lancer, sapper,
+  outflank, zealot, fortress, headhunter, skirmish, amazon,
+};
 
 export const resolveHooks = (s: Pick<GameState, 'court' | 'playerPassives' | 'enemyPassives'>): HookSet => ({
   court: s.court ? COURTS[s.court] : null,

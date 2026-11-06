@@ -58,15 +58,23 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .gold { margin-left: auto; color: var(--accent); font-weight: 700; }
 .legend span { white-space: nowrap; }
 .legend { flex-wrap: wrap; }
-.map { display: flex; flex-direction: column; gap: 6px; }
-.map-row { display: flex; align-items: center; gap: 8px; }
-.map-row.past { opacity: .4; }
-.row-num { width: 18px; color: var(--muted); font-size: 12px; text-align: right; }
-.row-nodes { flex: 1; display: flex; justify-content: space-around; gap: 6px; }
-.node { flex: 1; max-width: 110px; min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); display: flex; flex-direction: column; align-items: center; padding: 4px; color: var(--muted); }
+.map { position: relative; margin: 0 0 0 20px; }
+.map-lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.map-lines line { stroke: var(--line); stroke-width: 2; stroke-dasharray: 4 4; }
+.map-lines line.past { opacity: .35; }
+.map-lines line.live { stroke: var(--accent); stroke-dasharray: none; stroke-width: 3; }
+.row-num { position: absolute; left: -20px; width: 16px; transform: translateY(-50%); color: var(--muted); font-size: 12px; text-align: right; }
+.node { position: absolute; transform: translate(-50%, -50%); width: min(23%, 96px); min-height: 48px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px; color: var(--muted); z-index: 1; }
 .node:disabled { cursor: default; }
+.node.past { opacity: .4; }
 .node.open { border-color: var(--accent); color: var(--text); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
 .node.here { border-color: var(--accent-2); color: var(--text); }
 .node.boss { border-color: color-mix(in srgb, var(--danger) 60%, var(--line)); }
+.node.elite { border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+.node.elite .node-icon { color: var(--danger); }
+.node.shop .node-icon { color: var(--accent); }
 .node-icon { font-size: 18px; line-height: 1.2; }
-.node-label { font-size: 11px; }
+.node-label { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.price { margin-left: auto; color: var(--accent); font-weight: 700; }
+.passive .head { display: flex; gap: 8px; align-items: baseline; }
+.toast { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); border: 1px solid var(--accent); border-radius: 10px; padding: 10px 12px; }
