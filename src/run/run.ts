@@ -58,7 +58,7 @@ export const topOf = (m: Record<string, number>) => Object.entries(m).sort((a, b
 export type RunMode = 'draft' | 'set';
 export const SETS = tuning.run.sets as Record<string, { name: string; desc: string; army: string[]; passive: string }>;
 
-export type Reward = { type: 'passive'; id: string } | { type: 'piece'; kind: Kind } | { type: 'gold'; amount: number };
+export type Reward = { type: 'passive'; id: string } | { type: 'piece'; kind: Kind } | { type: 'wheel' } | { type: 'gold'; amount: number };
 
 export function newRun(seed: number, startPassive: string): RunState {
   return {
@@ -136,7 +136,8 @@ export function rollRewards(run: RunState, rand: Rand, elite = false): Reward[] 
     return out;
   }
   if (unowned.length) out.push({ type: 'passive', id: pick(rand, unowned) });
-  if (canGainPieces(run)) out.push({ type: 'piece', kind: pick(rand, tuning.run.rewardPieces) as Kind });
+  // Pieces now come from the Piece Wheels instead of a flat offer.
+  if (canGainPieces(run)) out.push({ type: 'wheel' });
   out.push({ type: 'gold', amount: tuning.run.rewardGold });
   while (out.length < 3 && unowned.length > 1) {
     const id = pick(rand, unowned);
@@ -148,6 +149,7 @@ export function rollRewards(run: RunState, rand: Rand, elite = false): Reward[] 
 /** Apply a reward. For a passive at the cap, `replace` names the passive to drop. */
 export function applyReward(run: RunState, r: Reward, replace?: string): RunState {
   if (r.type === 'gold') return { ...run, gold: run.gold + r.amount };
+  if (r.type === 'wheel') return run; // resolved on the wheel screen
   if (r.type === 'piece') return !canGainPieces(run) ? run : { ...run, army: [...run.army, r.kind] };
   if (run.passives.length < tuning.passives.maxActive) return { ...run, passives: [...run.passives, r.id] };
   if (!replace || !run.passives.includes(replace)) throw new Error('Passive cap reached: choose one to replace');

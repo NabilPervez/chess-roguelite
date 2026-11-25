@@ -36,11 +36,14 @@ export function placeArmy(b: Board, side: Side, army: Kind[]): void {
   const frontOrder = [2, 3, 1, 4, 0, 5];
   const backQ = backOrder.filter((c) => !b[back][c]);
   const frontQ = frontOrder.filter((c) => !b[front][c]);
-  const sorted = [...army].sort((a, z) => 'KQRBNP'.indexOf(a) - 'KQRBNP'.indexOf(z));
-  for (const k of sorted) {
-    if (k === 'P' && frontQ.length) b[front][frontQ.shift()!] = makePiece(side, k);
-    else if (backQ.length) b[back][backQ.shift()!] = makePiece(side, k);
-    else if (frontQ.length) b[front][frontQ.shift()!] = makePiece(side, k);
+  // Player pieces remember their army slot so the run can tell who survived or promoted.
+  const order = army.map((k, i) => i).sort((a, z) => 'KQRBNP'.indexOf(army[a]) - 'KQRBNP'.indexOf(army[z]));
+  const mk = (i: number) => ({ ...makePiece(side, army[i]), ...(side === 'player' ? { slot: i } : {}) });
+  for (const i of order) {
+    const k = army[i];
+    if (k === 'P' && frontQ.length) b[front][frontQ.shift()!] = mk(i);
+    else if (backQ.length) b[back][backQ.shift()!] = mk(i);
+    else if (frontQ.length) b[front][frontQ.shift()!] = mk(i);
   }
 }
 

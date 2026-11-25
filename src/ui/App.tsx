@@ -11,6 +11,10 @@ import type { MapNode } from '../run/map';
 import { mulberry32, newSeed, nodeRand } from '../run/rng';
 import { fightPayout, type Payout } from '../run/economy';
 import { Results } from './Results';
+import { Wheels } from './Wheels';
+import { Graveyard } from './Graveyard';
+import { bury, recover } from '../run/graveyard';
+import { openingArmy, openingSpins, spin, takeWheel } from '../run/wheels';
 import { GameOver } from './GameOver';
 import { applyReward, buy, canGainPieces, canUpgradeCap, capUpgradePrice, lockItem, pieceCap, reroll, rerollCost, upgradeCap, describeEvent, dropPassive, fightOpts, newRun, newSetRun, promotePawn, resolveEvent, rollEvent, rollRewards, rollShop, SETS, startingPassiveChoices, foldFight, type Reward, type RunMode, type RunState, type ShopItem } from '../run/run';
 import { clearSave, loadSave, writeSave } from '../run/save';
@@ -23,7 +27,7 @@ import { Onboarding } from './Onboarding';
 import { hasOnboarded, markOnboarded } from './onboarding';
 import { Splash } from './Splash';
 
-type Screen = { kind: 'splash' } | { kind: 'onboard' } | { kind: 'start' } | { kind: 'map' } | { kind: 'fight'; node: MapNode } | { kind: 'boss'; node: MapNode } | { kind: 'reward'; offers: Reward[] } | { kind: 'rest' } | { kind: 'shop'; items: ShopItem[]; bought: number[]; rerolls: number } | { kind: 'event'; id: string; result?: string } | { kind: 'results'; pay: Payout; node: MapNode } | { kind: 'end' };
+type Screen = { kind: 'splash' } | { kind: 'onboard' } | { kind: 'start' } | { kind: 'map' } | { kind: 'fight'; node: MapNode } | { kind: 'boss'; node: MapNode } | { kind: 'reward'; offers: Reward[] } | { kind: 'rest' } | { kind: 'shop'; items: ShopItem[]; bought: number[]; rerolls: number } | { kind: 'event'; id: string; result?: string } | { kind: 'results'; pay: Payout; node: MapNode } | { kind: 'wheels'; mode: 'opening' | 'reward'; spins: Kind[][] } | { kind: 'graveyard'; back: Screen } | { kind: 'end' };
 const PIECE: Record<string, string> = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟' };
 const PIECE_NAME: Record<string, string> = { K: 'King', Q: 'Queen', R: 'Rook', B: 'Bishop', N: 'Knight', P: 'Pawn' };
 
@@ -132,7 +136,7 @@ export function App() {
           <span className="eyebrow">Pick a starting passive</span>
           <div className="passive-grid one">
             {choices.map((id) => (
-              <button key={id} className="passive" onClick={() => begin(newRun(seed, id))}>
+              <button key={id} className="passive" onClick={() => { setRun(newRun(seed, id)); setScreen({ kind: 'wheels', mode: 'opening', spins: openingSpins((i) => nodeRand(seed, 'opening', `spin${i}`)) }); }}>
                 <strong><i className="ic" aria-hidden="true">✦</i>{PASSIVES[id].name}</strong><span>{PASSIVES[id].desc}</span>
               </button>
             ))}
@@ -216,11 +220,24 @@ export function App() {
       onProgress={(game) => { fightRef.current = { nodeId: node.id, game }; if (game.turn === 'player') persist(run, screen); }}
       onEnd={(end) => {
         fightRef.current = undefined;
-        const r = foldFight({ ...run, relics: [] }, end);
+        const r = bury(foldFight({ ...run, relics: [] }, end), end);
         if (end.status !== 'won') { setRun({ ...r, gold: r.gold + (end.goldEarned ?? 0), status: 'lost' }); setScreen({ kind: 'end' }); return; }
         setRun({ ...r, fightsWon: r.fightsWon + 1 });
         setScreen({ kind: 'results', pay: fightPayout(end, end, run.gold), node });
       }} />;
+  }
+
+  if (screen.kind === 'wheels') {
+    const { mode, spins } = screen;
+    return <Wheels key={`${mode}-${run.at}`} spins={spins} mode={mode} army={run.army} cap={pieceCap(run)} onDone={(pick) => {
+      if (mode === 'opening') begin({ ...run, army: openingArmy(spins) });
+      else { setRun(takeWheel(run, spins[0], pick)); setScreen({ kind: 'map' }); }
+    }} />;
+  }
+
+  if (screen.kind === 'graveyard') {
+    const back = screen.back;
+    return <Graveyard run={run} onRecover={(i) => setRun(recover(run, i))} onNext={() => setScreen(back)} />;
   }
 
   if (screen.kind === 'results') {
@@ -228,7 +245,9 @@ export function App() {
     return <Results pay={pay} gold={run.gold} onClaim={() => {
       const r = { ...run, gold: run.gold + pay.total };
       if (node.type === 'boss') { setSettings((st) => ({ ...st, beaten: true })); setRun({ ...r, status: 'won' }); setScreen({ kind: 'end' }); return; }
-      setRun(r); setScreen({ kind: 'reward', offers: rollRewards(r, nodeRand(r.seed, node.id, 'reward'), node.type === 'elite') });
+      setRun(r);
+      const reward: Screen = { kind: 'reward', offers: rollRewards(r, nodeRand(r.seed, node.id, 'reward'), node.type === 'elite') };
+      setScreen((r.graveyard ?? []).length ? { kind: 'graveyard', back: reward } : reward);
     }} />;
   }
 
@@ -241,13 +260,14 @@ export function App() {
           {screen.offers.map((o, i) => (
             <button key={i} className={`reward r-${o.type}`} onClick={() => {
               if (o.type === 'passive' && run.passives.length >= tuning.passives.maxActive) { setReplacing(o); return; }
+              if (o.type === 'wheel') { const row = run.at ? Number(run.at.split('-')[0]) : 0; setScreen({ kind: 'wheels', mode: 'reward', spins: [spin(nodeRand(run.seed, run.at ?? '', 'wheel'), row)] }); return; }
               setRun(applyReward(run, o)); setScreen({ kind: 'map' });
             }}>
-              <span className="art" aria-hidden="true">{o.type === 'passive' ? '✦' : o.type === 'piece' ? PIECE[o.kind] : '◈'}</span>
+              <span className="art" aria-hidden="true">{o.type === 'passive' ? '✦' : o.type === 'piece' ? PIECE[o.kind] : o.type === 'wheel' ? '♞' : '◈'}</span>
               <span className="reward-body">
-                <span className="eyebrow">{o.type === 'passive' ? 'Passive' : o.type === 'piece' ? 'Piece' : 'Gold'}</span>
-                <strong>{o.type === 'passive' ? PASSIVES[o.id].name : o.type === 'piece' ? PIECE_NAME[o.kind] : `+${o.amount} gold`}</strong>
-                <small>{o.type === 'passive' ? PASSIVES[o.id].desc : o.type === 'piece' ? `Joins your army (${run.army.length}/${pieceCap(run)}).` : `You'll have ◈ ${run.gold + o.amount} for the next shop.`}</small>
+                <span className="eyebrow">{o.type === 'passive' ? 'Passive' : o.type === 'piece' ? 'Piece' : o.type === 'wheel' ? 'Piece Wheels' : 'Gold'}</span>
+                <strong>{o.type === 'passive' ? PASSIVES[o.id].name : o.type === 'piece' ? PIECE_NAME[o.kind] : o.type === 'wheel' ? 'Spin for a piece' : `+${o.amount} gold`}</strong>
+                <small>{o.type === 'passive' ? PASSIVES[o.id].desc : o.type === 'piece' ? `Joins your army (${run.army.length}/${pieceCap(run)}).` : o.type === 'wheel' ? `Three reels, keep one. Triples keep all (${run.army.length}/${pieceCap(run)}).` : `You'll have ◈ ${run.gold + o.amount} for the next shop.`}</small>
               </span>
             </button>
           ))}
@@ -308,7 +328,7 @@ export function App() {
         <div className="army" aria-label="Your army">{run.army.map((k, i) => <span key={i} title={PIECE_NAME[k]} className="pc player small">{PIECE[k]}</span>)}
           <span className="gold">{run.army.length}/{pieceCap(run)}{(run.relics ?? []).length ? ` · ${(run.relics ?? []).map((r) => RELICS[r as RelicId].icon).join('')}` : ''}</span></div>
         {!shopPick ? (<>
-          <div className="shop-bar"><span className="eyebrow">Locked items stay for the next shop</span>
+          <div className="shop-bar"><button className="chip-btn" onClick={() => setScreen({ kind: 'graveyard', back: screen })}>☠ Graveyard · {(run.graveyard ?? []).length}</button>
             <button className="reroll" disabled={run.gold < cost} onClick={() => { const out = reroll(run, nodeRand(run.seed, run.at ?? '', `reroll${rerolls}`), rerolls); setRun(out.run); setScreen({ kind: 'shop', items: out.items, bought: [], rerolls: rerolls + 1 }); }}>↻ Reroll <span>◈{cost}</span></button></div>
           <div className="shop-body">
             {group(['piece'], 'Pieces')}

@@ -3,8 +3,8 @@ import { chooseMoveElo } from '../ai/engine';
 import tuning from '../data/tuning.json';
 import { COURTS, PASSIVES, resolveHooks } from '../passives';
 import { applyMove, objectiveLabel } from '../rules/game';
-import { inCheck, legalMoves } from '../rules/moves';
-import type { GameState, Move, Sq } from '../rules/types';
+import { inCheck, legalMoves, promotes } from '../rules/moves';
+import type { GameState, Kind, Move, Sq } from '../rules/types';
 import { mulberry32 } from '../run/rng';
 import { Board } from './Board';
 import { TILE_INFO } from '../rules/tiles';
@@ -16,6 +16,7 @@ const GOAL_NAME: Record<string, string> = { mate: 'Checkmate', regicide: 'Take t
 export function Fight({ initial, title, seed, onEnd, onProgress, gold, floor }: { initial: GameState; title: string; seed: number; gold?: number; floor?: { row: number; rows: number }; onEnd: (end: GameState) => void; onProgress?: (g: GameState) => void }) {
   const [game, setGame] = useState(initial);
   const [sel, setSel] = useState<Sq | null>(null);
+  const [promo, setPromo] = useState<Move | null>(null);
   const [started] = useState(Date.now());
   const [elapsed, setElapsed] = useState(0);
   const rand = useRef(mulberry32(seed));
@@ -38,7 +39,12 @@ export function Fight({ initial, title, seed, onEnd, onProgress, gold, floor }: 
   function tap(sq: Sq) {
     if (game.turn !== 'player' || game.status !== 'playing') return;
     const m = moves.find((x) => x.to.r === sq.r && x.to.c === sq.c);
-    if (m) { setGame(applyMove(game, m, hooks)); setSel(null); return; }
+    if (m) {
+      const mover = game.board[m.from.r][m.from.c]!;
+      // Promote to anything: ask which piece (swaps never promote).
+      if (m.tag !== 'swap' && promotes(mover, m.to, hooks)) { setPromo(m); return; }
+      setGame(applyMove(game, m, hooks)); setSel(null); return;
+    }
     const p = game.board[sq.r][sq.c];
     setSel(p?.side === 'player' && !(sel && sel.r === sq.r && sel.c === sq.c) ? sq : null);
   }
@@ -85,6 +91,22 @@ export function Fight({ initial, title, seed, onEnd, onProgress, gold, floor }: 
         <ol className="log">{game.log.slice(-4).reverse().map((l, i) => <li key={i}>{l}</li>)}</ol>
       </aside>
       {drawer && <div className="sheet-scrim" onClick={() => setDrawer(false)} />}
+      {promo && (
+        <div className="overlay" role="dialog" aria-modal="true" aria-label="Promote pawn">
+          <div className="card promo">
+            <span className="eyebrow">Promotion · it stays in your army</span>
+            <h2>Your pawn becomes…</h2>
+            <div className="promo-grid">
+              {(['Q', 'R', 'B', 'N'] as Kind[]).map((k) => (
+                <button key={k} className="promo-btn" onClick={() => { setGame(applyMove(game, { ...promo, promoteTo: k }, hooks)); setPromo(null); setSel(null); }}>
+                  <span aria-hidden="true">{({ Q: '♛', R: '♜', B: '♝', N: '♞' } as Record<string, string>)[k]}</span>{({ Q: 'Queen', R: 'Rook', B: 'Bishop', N: 'Knight' } as Record<string, string>)[k]}
+                </button>
+              ))}
+            </div>
+            <button className="ghost" onClick={() => setPromo(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
       {game.status !== 'playing' && (
         <div className="overlay" role="dialog" aria-modal="true">
           <div className="card result">

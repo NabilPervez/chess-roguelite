@@ -303,7 +303,7 @@
       "rerollStep": 5,
       "capUpgradeBase": 80,
       "capUpgradeStep": 40,
-      "capMax": 14
+      "capMax": 12
     },
     "events": {
       "smithCost": 50,
@@ -414,5 +414,34 @@
   },
   "onboarding": {
     "key": "gambit-spire-onboarded"
+  },
+  "graveyard": {
+    "size": 5,
+    "prices": {
+      "P": 15,
+      "N": 45,
+      "B": 45,
+      "R": 70,
+      "Q": 120
+    }
+  },
+  "wheels": {
+    "reels": 3,
+    "openingSpins": 2,
+    "weights": {
+      "P": 50,
+      "N": 18,
+      "B": 18,
+      "R": 10,
+      "Q": 4
+    },
+    "rowShift": {
+      "P": -2,
+      "N": 0.5,
+      "B": 0.5,
+      "R": 0.6,
+      "Q": 0.4
+    },
+    "stopStaggerMs": 260
   }
 }

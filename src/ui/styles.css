@@ -456,3 +456,36 @@ small.warn { font-weight: 600; }
 
 @media (min-width: 640px) { .statgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .panel { padding: 48px 32px 32px; } }
 @media (prefers-reduced-motion: reduce) { .ledger li { animation: none; } .big-btn { transition: none; } }
+
+/* Piece Wheels (Nabil, 2026-11-25: result is pre-rolled; motion is theatre) */
+.reels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 16px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; }
+.reel { position: relative; height: 128px; overflow: hidden; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); display: grid; place-items: center; padding: 0; }
+.reel::before, .reel::after { content: ''; position: absolute; top: 50%; width: 0; height: 0; border: 8px solid transparent; transform: translateY(-50%); z-index: 1; }
+.reel::before { left: 0; border-left-color: var(--accent); } .reel::after { right: 0; border-right-color: var(--accent); }
+.reel-strip { position: absolute; inset: 0 0 auto; display: flex; flex-direction: column; animation: reel .6s linear infinite; filter: blur(1px); opacity: .7; }
+.reel-strip span { height: 64px; display: grid; place-items: center; font-size: 32px; color: var(--player); }
+.reel-face { font-size: 62px; line-height: 1; color: var(--player); animation: land .5s cubic-bezier(.16,1,.3,1) both; }
+button.reel:hover { border-color: var(--accent); } .reel.chosen, .reel.triple { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+@keyframes reel { from { transform: translateY(0); } to { transform: translateY(-640px); } }
+@keyframes land { from { transform: translateY(-30px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Graveyard tray + drop zone */
+.tray { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+.tray-item { position: relative; width: 88px; height: 96px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; display: grid; place-items: center; padding: 0 0 16px; user-select: none; }
+.tray-item.sel { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 2px; }
+.tray-item:disabled { opacity: .45; cursor: not-allowed; }
+.tray-glyph { font-size: 44px; color: var(--player); }
+.price-chip { position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%); background: var(--accent-2); color: #fff; border-radius: 8px; padding: 4px 8px; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.dropzone { min-height: 88px; border: 2px dashed var(--line); border-radius: 12px; background: color-mix(in srgb, var(--bg) 60%, transparent); color: var(--muted); font-size: 18px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.dropzone.over, .dropzone:not(:disabled):hover { border-color: var(--accent); color: var(--accent); }
+.drag-ghost { position: fixed; z-index: 90; transform: translate(-50%, -50%) scale(1.15); font-size: 44px; color: var(--player); pointer-events: none; }
+
+/* Promotion picker */
+.promo { display: flex; flex-direction: column; gap: 16px; max-width: 420px; width: 100%; }
+.promo-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.promo-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; font-size: 13px; font-weight: 500; }
+.promo-btn span { font-size: 32px; color: var(--player); }
+.promo-btn:hover, .promo-btn:focus-visible { border-color: var(--accent); outline: none; }
+.promo .ghost { background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+
+@media (prefers-reduced-motion: reduce) { .reel-strip, .reel-face { animation: none; } }
