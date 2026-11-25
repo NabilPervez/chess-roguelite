@@ -105,7 +105,7 @@ export function previewBoard(b: Board, m: Move, hooks?: HookSet): Board {
   const board = b.map((row) => row.slice());
   const mover = board[m.from.r][m.from.c]!;
   board[m.from.r][m.from.c] = m.tag === 'swap' ? board[m.to.r][m.to.c] : null;
-  board[m.to.r][m.to.c] = promotes(mover, m.to, hooks) ? { ...mover, kind: 'Q' } : mover;
+  board[m.to.r][m.to.c] = promotes(mover, m.to, hooks) ? { ...mover, kind: m.promoteTo && m.promoteTo !== 'K' && m.promoteTo !== 'P' ? m.promoteTo : 'Q' } : mover;
   return board;
 }
 

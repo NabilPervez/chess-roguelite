@@ -16,7 +16,7 @@ describe('fight payout', () => {
     expect(p.captured).toBe(2);
     expect(p.savedGold).toBe(saved * E.perSaved);
     expect(p.speedGold).toBe(Math.min(E.turnBonusCap, (start.turnLimit - 4) * E.perTurnLeft));
-    expect(p.total).toBe(p.savedGold + 2 * E.perCapture + p.speedGold + 10);
+    expect(p.total).toBe(E.winReward + p.savedGold + 2 * E.perCapture + p.speedGold + 10);
   });
   it('fewer turns pays more', () => {
     const slow = fightPayout(start, { ...start, status: 'won', turnNumber: start.turnLimit - 1 });

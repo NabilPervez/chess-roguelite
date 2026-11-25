@@ -2,7 +2,7 @@ import tuning from '../data/tuning.json';
 import { PASSIVES } from '../passives';
 import { eloForNode } from '../ai/elo';
 import type { FightOpts } from '../rules/board';
-import type { Kind, ObjectiveKind } from '../rules/types';
+import type { GameState, Kind, ObjectiveKind } from '../rules/types';
 import { findNode, generateMap, type MapNode, type RunMap } from './map';
 import { RELIC_IDS, RELICS, type RelicId } from './relics';
 import { mulberry32, pick, sample, type Rand } from './rng';
@@ -25,7 +25,35 @@ export interface RunState {
   pieceCap?: number;
   /** Shop item kept for the next shop. */
   locked?: ShopItem | null;
+  /** Run-long counters for the Game Over screen. */
+  stats?: RunStats;
+  /** Last captured pieces, newest first; can be bought back. */
+  graveyard?: Kind[];
+  /** Home-row square per army slot ("r,c"); reused each fight while valid. */
+  formation?: string[];
 }
+
+export interface RunStats {
+  moved: number; captured: number; tiles: number; lost: number; rerolls: number;
+  passivesBought: number; piecesBought: number; relicsBought: number;
+  pieceUse: Record<string, number>; tileUse: Record<string, number>;
+}
+export const emptyStats = (): RunStats => ({ moved: 0, captured: 0, tiles: 0, lost: 0, rerolls: 0, passivesBought: 0, piecesBought: 0, relicsBought: 0, pieceUse: {}, tileUse: {} });
+export const statsOf = (run: RunState): RunStats => ({ ...emptyStats(), ...(run.stats ?? {}) });
+const merge = (a: Record<string, number>, b: Record<string, number> = {}) => {
+  const out = { ...a };
+  for (const [k, v] of Object.entries(b)) out[k] = (out[k] ?? 0) + v;
+  return out;
+};
+/** Add one fight's tally to the run's stats. */
+export function foldFight(run: RunState, end: GameState): RunState {
+  const s = statsOf(run), t = end.tally;
+  if (!t) return run;
+  return { ...run, stats: { ...s, moved: s.moved + t.moved, captured: s.captured + t.captured, tiles: s.tiles + t.tiles, pieceUse: merge(s.pieceUse, t.pieceUse), tileUse: merge(s.tileUse, t.tileUse) } };
+}
+const bump = (run: RunState, k: 'rerolls' | 'passivesBought' | 'piecesBought' | 'relicsBought', n = 1): RunState => { const s = statsOf(run); return { ...run, stats: { ...s, [k]: s[k] + n } }; };
+/** Most-used key in a counter, or null. */
+export const topOf = (m: Record<string, number>) => Object.entries(m).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 
 export type RunMode = 'draft' | 'set';
 export const SETS = tuning.run.sets as Record<string, { name: string; desc: string; army: string[]; passive: string }>;
@@ -163,7 +191,7 @@ export const rerollCost = (rerolls: number) => tuning.run.shop.rerollCost + rero
 export function reroll(run: RunState, rand: Rand, rerolls: number): { run: RunState; items: ShopItem[] } {
   const cost = rerollCost(rerolls);
   if (run.gold < cost) throw new Error('Not enough gold');
-  const paid = { ...run, gold: run.gold - cost };
+  const paid = bump({ ...run, gold: run.gold - cost }, 'rerolls');
   return { run: paid, items: rollShop(paid, rand) };
 }
 
@@ -187,7 +215,7 @@ export const takeRelics = (run: RunState): { run: RunState; relics: string[] } =
 /** Buy an item. Throws if unaffordable. `target` is the passive to replace (passive at cap) or remove. */
 export function buy(run: RunState, item: ShopItem, target?: string): RunState {
   if (run.gold < item.price) throw new Error('Not enough gold');
-  const paid = { ...run, gold: run.gold - item.price };
+  const paid = bump({ ...run, gold: run.gold - item.price }, item.type === 'relic' ? 'relicsBought' : item.type === 'piece' ? 'piecesBought' : 'passivesBought', item.type === 'remove' ? 0 : 1);
   if (item.type === 'remove') {
     if (!target || !run.passives.includes(target)) throw new Error('Choose a passive to remove');
     return dropPassive(paid, target);

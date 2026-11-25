@@ -7,15 +7,13 @@ import { inCheck, legalMoves } from '../rules/moves';
 import type { GameState, Move, Sq } from '../rules/types';
 import { mulberry32 } from '../run/rng';
 import { Board } from './Board';
-import { CoinBurst } from './CoinBurst';
-import { fightPayout } from '../run/economy';
 import { TILE_INFO } from '../rules/tiles';
 import type { TileKind } from '../rules/types';
 
 const GOAL_DESC: Record<string, string> = { mate: 'Trap the enemy king with no escape.', regicide: 'Capture the enemy king outright. No check rules.', captures: 'Take enemy pieces. Some passives make captures count extra.', material: 'Capture pieces worth this much: pawn 1, knight/bishop 3, rook 5, queen 9.', officers: 'Capture knights, bishops, rooks or queens. Pawns don\'t count.', breakthrough: 'Get one of your pawns to the far rank.' };
 const GOAL_NAME: Record<string, string> = { mate: 'Checkmate', regicide: 'Take the king', captures: 'Captures', material: 'Material', officers: 'Officers', breakthrough: 'Breakthrough' };
 
-export function Fight({ initial, title, seed, onEnd, onProgress, gold, floor }: { initial: GameState; title: string; seed: number; gold?: number; floor?: { row: number; rows: number }; onEnd: (won: boolean, goldEarned: number) => void; onProgress?: (g: GameState) => void }) {
+export function Fight({ initial, title, seed, onEnd, onProgress, gold, floor }: { initial: GameState; title: string; seed: number; gold?: number; floor?: { row: number; rows: number }; onEnd: (end: GameState) => void; onProgress?: (g: GameState) => void }) {
   const [game, setGame] = useState(initial);
   const [sel, setSel] = useState<Sq | null>(null);
   const [started] = useState(Date.now());
@@ -45,7 +43,6 @@ export function Fight({ initial, title, seed, onEnd, onProgress, gold, floor }: 
     setSel(p?.side === 'player' && !(sel && sel.r === sq.r && sel.c === sq.c) ? sq : null);
   }
 
-  const pay = useMemo(() => (game.status === 'playing' ? null : fightPayout(initial, game)), [game.status]);
   const court = game.court ? COURTS[game.court] : null;
   const kingHunt = !isFinite(game.capturesToWin);
   const turnsLeft = game.turnLimit - game.turnNumber;
@@ -90,24 +87,13 @@ export function Fight({ initial, title, seed, onEnd, onProgress, gold, floor }: 
       {drawer && <div className="sheet-scrim" onClick={() => setDrawer(false)} />}
       {game.status !== 'playing' && (
         <div className="overlay" role="dialog" aria-modal="true">
-          {game.status === 'won' && <CoinBurst />}
           <div className="card result">
             <span className="eyebrow">{game.status === 'won' ? 'Victory' : 'Defeat'}</span>
             <h2>{game.status === 'won' ? 'Fight won' : 'Run over'}</h2>
             <p>{game.endReason}</p>
-            {pay && game.status === 'won' && (
-              <dl className="payout">
-                <div><dt>Pieces saved ×{pay.saved}</dt><dd>◈{pay.savedGold}</dd></div>
-                <div><dt>Pieces taken ×{pay.captured}</dt><dd>◈{pay.captureGold}</dd></div>
-                <div><dt>Speed · {pay.turnsLeft} turns spare</dt><dd>◈{pay.speedGold}</dd></div>
-                {(game.payoutMult ?? 1) > 1 && <div><dt>Midas Coin</dt><dd>×{game.payoutMult}</dd></div>}
-                {pay.tileGold > 0 && <div><dt>Gold tiles</dt><dd>◈{pay.tileGold}</dd></div>}
-                <div className="total"><dt>Total</dt><dd>◈{pay.total}</dd></div>
-              </dl>
-            )}
-            {pay && game.status !== 'won' && pay.tileGold > 0 && <p>Earned ◈{pay.tileGold} this fight.</p>}
+            {game.status !== 'won' && (game.goldEarned ?? 0) > 0 && <p>Earned ◈{game.goldEarned} this fight.</p>}
             <p className="meta">Fight time {Math.floor(elapsed / 60000)}m {Math.round((elapsed % 60000) / 1000)}s · {game.turnNumber} turns</p>
-            <div className="row"><button className="primary" onClick={() => onEnd(game.status === 'won', pay?.total ?? 0)}>{game.status === 'won' ? 'Claim reward' : 'Continue'}</button></div>
+            <div className="row"><button className="primary" onClick={() => onEnd(game)}>{game.status === 'won' ? 'See results' : 'Continue'}</button></div>
           </div>
         </div>
       )}

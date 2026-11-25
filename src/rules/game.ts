@@ -1,8 +1,10 @@
 import { at } from './board';
 import { allLegalMoves, inCheck, legalMoves, promotes, sideHooks } from './moves';
-import { landTiles, tickSide } from './tiles';
+import { key, landTiles, tickSide } from './tiles';
 import tuning from '../data/tuning.json';
-import type { GameState, HookSet, Move, Piece } from './types';
+import type { GameState, HookSet, Kind, Move, Piece, Tally } from './types';
+
+const PROMOTABLE: Kind[] = ['Q', 'R', 'B', 'N'];
 
 const name = (k: string) => ({ P: 'Pawn', N: 'Knight', B: 'Bishop', R: 'Rook', Q: 'Queen', K: 'King' })[k] ?? k;
 const sqName = (s: { r: number; c: number }) => `${'abcdef'[s.c]}${s.r + 1}`;
@@ -46,7 +48,8 @@ export function applyMove(state: GameState, move: Move, hooks: HookSet): GameSta
   board[move.from.r][move.from.c] = swap ? board[move.to.r][move.to.c] : null;
   // Promotion: pawn reaching the far rank (or one early with Promotion Rush) becomes a queen.
   const promoted = promotes(mover, move.to, hooks);
-  if (promoted) mover.kind = 'Q';
+  const movedKind = mover.kind;
+  if (promoted) mover.kind = move.promoteTo && PROMOTABLE.includes(move.promoteTo) ? move.promoteTo : 'Q';
   board[move.to.r][move.to.c] = mover;
 
   let progress = state.progress;
@@ -65,8 +68,18 @@ export function applyMove(state: GameState, move: Move, hooks: HookSet): GameSta
   }
   if (promoted && mover.side === 'player' && state.objective === 'breakthrough') progress += 1;
 
+  let tally = state.tally;
+  if (mover.side === 'player') {
+    const t: Tally = tally ?? { moved: 0, captured: 0, tiles: 0, pieceUse: {}, tileUse: {} };
+    const tile = state.tiles?.[key(move.to)];
+    tally = {
+      moved: t.moved + 1, captured: t.captured + (captured ? 1 : 0), tiles: t.tiles + (tile ? 1 : 0),
+      pieceUse: { ...t.pieceUse, [movedKind]: (t.pieceUse[movedKind] ?? 0) + 1 },
+      tileUse: tile ? { ...t.tileUse, [tile]: (t.tileUse[tile] ?? 0) + 1 } : t.tileUse,
+    };
+  }
   const turnNumber = mover.side === 'player' ? state.turnNumber + 1 : state.turnNumber;
-  let next: GameState = { ...state, board, progress, status, endReason, log, used, turnNumber, turn: mover.side === 'player' ? 'enemy' : 'player' };
+  let next: GameState = { ...state, board, progress, status, endReason, log, used, turnNumber, tally, turn: mover.side === 'player' ? 'enemy' : 'player' };
   next = landTiles(next, move);
   // Passives that react to moves (Martyr, Vengeance, Tithe, Silver Fork, …).
   for (const owner of ['player', 'enemy'] as const)

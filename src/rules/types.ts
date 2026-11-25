@@ -1,9 +1,10 @@
 export type Side = 'player' | 'enemy';
 export type Kind = 'P' | 'N' | 'B' | 'R' | 'Q' | 'K';
 export interface Sq { r: number; c: number }
-export interface Piece { id: string; side: Side; kind: Kind; moved: boolean }
+/** `slot` is the index in the player's run army, so the run knows which piece lived, died or promoted. */
+export interface Piece { id: string; side: Side; kind: Kind; moved: boolean; slot?: number }
 export type Board = (Piece | null)[][];
-export interface Move { from: Sq; to: Sq; capture: boolean; tag?: string }
+export interface Move { from: Sq; to: Sq; capture: boolean; tag?: string; /** Promotion choice; defaults to a queen. */ promoteTo?: Kind }
 export type Status = 'playing' | 'won' | 'lost';
 export type ObjectiveKind = 'captures' | 'material' | 'officers' | 'breakthrough' | 'regicide';
 export type TileKind = 'protective' | 'trap' | 'phantom' | 'crumbling' | 'gold' | 'hole';
@@ -44,7 +45,11 @@ export interface GameState {
   used?: string[];
   /** Sides whose next capture is boosted by Vengeance. */
   vengeance?: Side[];
+  /** Player-side counters for run stats and payout. */
+  tally?: Tally;
 }
+
+export interface Tally { moved: number; captured: number; tiles: number; pieceUse: Record<string, number>; tileUse: Record<string, number> }
 
 export interface MoveCtx { state: GameState; piece: Piece; from: Sq }
 

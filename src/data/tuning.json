@@ -355,7 +355,7 @@
     }
   },
   "save": {
-    "version": 1,
+    "version": 2,
     "key": "gambit-spire-save"
   },
   "settings": {
@@ -381,6 +381,11 @@
     "coinBurst": {
       "coins": 42,
       "durationMs": 2200
+    },
+    "winReward": 10,
+    "interest": {
+      "per": 25,
+      "max": 10
     }
   },
   "relics": {

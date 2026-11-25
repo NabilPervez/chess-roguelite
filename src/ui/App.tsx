@@ -8,8 +8,11 @@ import { seedTiles } from '../rules/tiles';
 import type { TileKind } from '../rules/types';
 import type { Kind } from '../rules/types';
 import type { MapNode } from '../run/map';
-import { mulberry32 } from '../run/rng';
-import { applyReward, buy, canGainPieces, canUpgradeCap, capUpgradePrice, lockItem, pieceCap, reroll, rerollCost, upgradeCap, describeEvent, dropPassive, fightOpts, newRun, newSetRun, promotePawn, resolveEvent, rollEvent, rollRewards, rollShop, SETS, startingPassiveChoices, type Reward, type RunMode, type RunState, type ShopItem } from '../run/run';
+import { mulberry32, newSeed, nodeRand } from '../run/rng';
+import { fightPayout, type Payout } from '../run/economy';
+import { Results } from './Results';
+import { GameOver } from './GameOver';
+import { applyReward, buy, canGainPieces, canUpgradeCap, capUpgradePrice, lockItem, pieceCap, reroll, rerollCost, upgradeCap, describeEvent, dropPassive, fightOpts, newRun, newSetRun, promotePawn, resolveEvent, rollEvent, rollRewards, rollShop, SETS, startingPassiveChoices, foldFight, type Reward, type RunMode, type RunState, type ShopItem } from '../run/run';
 import { clearSave, loadSave, writeSave } from '../run/save';
 import type { GameState } from '../rules/types';
 import { COURT_ICON, Fight } from './Fight';
@@ -19,19 +22,18 @@ import { SettingsPanel } from './SettingsPanel';
 import { Onboarding } from './Onboarding';
 import { hasOnboarded, markOnboarded } from './onboarding';
 import { Splash } from './Splash';
-import { buildRunShareText, smsHref, whatsappHref } from './share';
 
-type Screen = { kind: 'splash' } | { kind: 'onboard' } | { kind: 'start' } | { kind: 'map' } | { kind: 'fight'; node: MapNode } | { kind: 'boss'; node: MapNode } | { kind: 'reward'; offers: Reward[] } | { kind: 'rest' } | { kind: 'shop'; items: ShopItem[]; bought: number[]; rerolls: number } | { kind: 'event'; id: string; result?: string } | { kind: 'end' };
+type Screen = { kind: 'splash' } | { kind: 'onboard' } | { kind: 'start' } | { kind: 'map' } | { kind: 'fight'; node: MapNode } | { kind: 'boss'; node: MapNode } | { kind: 'reward'; offers: Reward[] } | { kind: 'rest' } | { kind: 'shop'; items: ShopItem[]; bought: number[]; rerolls: number } | { kind: 'event'; id: string; result?: string } | { kind: 'results'; pay: Payout; node: MapNode } | { kind: 'end' };
 const PIECE: Record<string, string> = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟' };
 const PIECE_NAME: Record<string, string> = { K: 'King', Q: 'Queen', R: 'Rook', B: 'Bishop', N: 'Knight', P: 'Pawn' };
 
 export function App() {
-  const [seed, setSeed] = useState(() => Date.now() % 100000);
+  const [seed, setSeed] = useState(() => newSeed());
+  const [seedInput, setSeedInput] = useState('');
   const [screen, setScreen] = useState<Screen>({ kind: 'splash' });
   const [run, setRun] = useState<RunState | null>(null);
   const [replacing, setReplacing] = useState<Reward | null>(null);
   const [shopPick, setShopPick] = useState<{ item: ShopItem; i: number } | null>(null);
-  const rand = useRef(mulberry32(seed));
   const [choices, setChoices] = useState(() => startingPassiveChoices(mulberry32(seed)));
   const [mode, setMode] = useState<RunMode>('draft');
   const [saved, setSaved] = useState(() => loadSave());
@@ -53,7 +55,7 @@ export function App() {
       {showSettings && <SettingsPanel value={settings} prefersDark={prefersDark} onChange={setSettings} onClose={() => setShowSettings(false)} />}
     </>
   );
-  useEffect(() => { rand.current = mulberry32(seed); setChoices(startingPassiveChoices(mulberry32(seed))); }, [seed]);
+  useEffect(() => { setChoices(startingPassiveChoices(mulberry32(seed))); }, [seed]);
 
   // Autosave after every step of a live run; a finished run clears the save.
   const persist = (r: RunState | null, sc: Screen) => {
@@ -68,7 +70,6 @@ export function App() {
   const begin = (r: RunState) => { fightRef.current = undefined; setRun(r); setScreen({ kind: 'map' }); };
   const resume = () => {
     if (!saved) return;
-    rand.current = mulberry32(saved.run.seed + saved.run.fightsWon * 7919 + saved.run.gold);
     fightRef.current = saved.fight;
     setSeed(saved.run.seed); setRun(saved.run); setScreen(saved.screen as Screen); setSaved(null);
   };
@@ -119,6 +120,13 @@ export function App() {
           <button className={`passive${mode === 'set' ? ' on' : ''}`} aria-pressed={mode === 'set'} onClick={() => setMode('set')}><strong>Set</strong><span>A fixed prebuilt army with a signature passive. No new pieces.</span></button>
         </div>
       </section>
+      <section className="card seed-card">
+        <span className="eyebrow">Seed · {seed}</span>
+        <form className="seed-row" onSubmit={(e) => { e.preventDefault(); const n = Number(seedInput.trim()); if (Number.isInteger(n) && n >= 0 && n < 2 ** 32) { setSeed(n); setSeedInput(''); } }}>
+          <input inputMode="numeric" pattern="[0-9]*" placeholder="Play a seed" aria-label="Seed to play" value={seedInput} onChange={(e) => setSeedInput(e.target.value.replace(/\D/g, ''))} />
+          <button className="ghost" disabled={!seedInput}>Use</button>
+        </form>
+      </section>
       {mode === 'draft' ? (
         <section className="card">
           <span className="eyebrow">Pick a starting passive</span>
@@ -164,8 +172,8 @@ export function App() {
       <MapView run={run} onPick={(n) => {
         setRun({ ...run, at: n.id });
         if (n.type === 'rest') setScreen({ kind: 'rest' });
-        else if (n.type === 'shop') setScreen({ kind: 'shop', items: rollShop(run, rand.current), bought: [], rerolls: 0 });
-        else if (n.type === 'event') setScreen({ kind: 'event', id: rollEvent(rand.current) });
+        else if (n.type === 'shop') setScreen({ kind: 'shop', items: rollShop(run, nodeRand(run.seed, n.id, 'shop')), bought: [], rerolls: 0 });
+        else if (n.type === 'event') setScreen({ kind: 'event', id: rollEvent(nodeRand(run.seed, n.id, 'event')) });
         else if (n.type === 'boss') setScreen({ kind: 'boss', node: n });
         else { fightRef.current = undefined; setScreen({ kind: 'fight', node: n }); }
       }} />
@@ -206,13 +214,22 @@ export function App() {
     return <Fight key={node.id} initial={initial} gold={run.gold} floor={{ row: node.row, rows: tuning.run.rows }} seed={seed + node.row * 31 + node.col + (resumed?.turnNumber ?? 0)}
       title={node.type === 'boss' ? `Boss · ${tuning.run.boss.name} — checkmate` : node.type === 'elite' ? `Row ${node.row + 1} · Elite — checkmate` : `Row ${node.row + 1} · Fight`}
       onProgress={(game) => { fightRef.current = { nodeId: node.id, game }; if (game.turn === 'player') persist(run, screen); }}
-      onEnd={(won, earned) => {
+      onEnd={(end) => {
         fightRef.current = undefined;
-        if (!won) { setRun({ ...run, relics: [], status: 'lost' }); setScreen({ kind: 'end' }); return; }
-        const r = { ...run, relics: [], fightsWon: run.fightsWon + 1, gold: run.gold + earned };
-        if (screen.node.type === 'boss') { setSettings((st) => ({ ...st, beaten: true })); setRun({ ...r, status: 'won' }); setScreen({ kind: 'end' }); return; }
-        setRun(r); setScreen({ kind: 'reward', offers: rollRewards(r, rand.current, screen.node.type === 'elite') });
+        const r = foldFight({ ...run, relics: [] }, end);
+        if (end.status !== 'won') { setRun({ ...r, gold: r.gold + (end.goldEarned ?? 0), status: 'lost' }); setScreen({ kind: 'end' }); return; }
+        setRun({ ...r, fightsWon: r.fightsWon + 1 });
+        setScreen({ kind: 'results', pay: fightPayout(end, end, run.gold), node });
       }} />;
+  }
+
+  if (screen.kind === 'results') {
+    const { pay, node } = screen;
+    return <Results pay={pay} gold={run.gold} onClaim={() => {
+      const r = { ...run, gold: run.gold + pay.total };
+      if (node.type === 'boss') { setSettings((st) => ({ ...st, beaten: true })); setRun({ ...r, status: 'won' }); setScreen({ kind: 'end' }); return; }
+      setRun(r); setScreen({ kind: 'reward', offers: rollRewards(r, nodeRand(r.seed, node.id, 'reward'), node.type === 'elite') });
+    }} />;
   }
 
   if (screen.kind === 'reward') return (
@@ -292,7 +309,7 @@ export function App() {
           <span className="gold">{run.army.length}/{pieceCap(run)}{(run.relics ?? []).length ? ` · ${(run.relics ?? []).map((r) => RELICS[r as RelicId].icon).join('')}` : ''}</span></div>
         {!shopPick ? (<>
           <div className="shop-bar"><span className="eyebrow">Locked items stay for the next shop</span>
-            <button className="reroll" disabled={run.gold < cost} onClick={() => { const out = reroll(run, rand.current, rerolls); setRun(out.run); setScreen({ kind: 'shop', items: out.items, bought: [], rerolls: rerolls + 1 }); }}>↻ Reroll <span>◈{cost}</span></button></div>
+            <button className="reroll" disabled={run.gold < cost} onClick={() => { const out = reroll(run, nodeRand(run.seed, run.at ?? '', `reroll${rerolls}`), rerolls); setRun(out.run); setScreen({ kind: 'shop', items: out.items, bought: [], rerolls: rerolls + 1 }); }}>↻ Reroll <span>◈{cost}</span></button></div>
           <div className="shop-body">
             {group(['piece'], 'Pieces')}
             {group(['passive'], 'Passives')}
@@ -334,7 +351,7 @@ export function App() {
           <div className="passive-grid one">
             {ev.choices.map((c, i) => (
               <button key={i} className="passive" disabled={!c.ok} onClick={() => {
-                const out = resolveEvent(run, ev.id, i, rand.current);
+                const out = resolveEvent(run, ev.id, i, nodeRand(run.seed, run.at ?? '', 'event-pick'));
                 setRun(out.run); setScreen({ ...screen, result: out.result });
               }}><strong>{c.label}</strong><span>{c.desc}</span></button>
             ))}
@@ -371,37 +388,14 @@ export function App() {
   }
 
   return (
-    <main className={`shell end ${run.status}`}>
-      <header className="hero"><span className="eyebrow">{run.status === 'won' ? 'Act 1 cleared' : 'Run over'} · {run.mode === 'set' ? 'Set' : 'Draft'} run</span>
-        <h1>{run.status === 'won' ? 'The Spire is yours.' : 'Your king has fallen.'}</h1>
-        <p>{run.status === 'won' ? 'The Iron Regent is checkmated.' : `You reached row ${run.at ? Number(run.at.split('-')[0]) + 1 : 1} of ${tuning.run.rows}.`} <span>{run.status === 'won' ? 'Try a set run next.' : 'Every run teaches the map.'}</span></p></header>
-      <dl className="stats">
-        <div><dt>Fights won</dt><dd>{run.fightsWon}</dd></div>
-        <div><dt>Row reached</dt><dd>{run.at ? Number(run.at.split('-')[0]) + 1 : 1}<small>/{tuning.run.rows}</small></dd></div>
-        <div><dt>Army</dt><dd>{run.army.length}</dd></div>
-        <div><dt>Gold</dt><dd className="g">◈ {run.gold}</dd></div>
-      </dl>
-      {run.status === 'won' && (
+    <GameOver run={run} onNew={() => { clearSave(); setRun(null); setSeed(newSeed()); setScreen({ kind: 'start' }); }} onMenu={() => { clearSave(); setRun(null); setSeed(newSeed()); setScreen({ kind: 'splash' }); }}
+      army={army} passives={passiveChips}
+      unlock={run.status === 'won' && (
         <section className="card unlock-note"><span className="eyebrow">🔓 Unlocked · Difficulty</span>
           <p>You can now set your own Elo in Settings. Enemies start at that rating and climb from there.</p>
           <button className="ghost" onClick={() => setShowSettings(true)}>Open settings</button>
           {showSettings && <SettingsPanel value={settings} prefersDark={prefersDark} onChange={setSettings} onClose={() => setShowSettings(false)} />}
         </section>
-      )}
-      <section><span className="eyebrow">Final army</span>{army}</section>
-      {passiveChips && <section><span className="eyebrow">Passives</span>{passiveChips}</section>}
-      {(() => {
-        const text = buildRunShareText({ won: run.status === 'won', row: run.at ? Number(run.at.split('-')[0]) + 1 : 1, rows: tuning.run.rows, fightsWon: run.fightsWon, gold: run.gold, passives: run.passives.map((id) => PASSIVES[id].name) });
-        return (
-          <section className="share" aria-label="Share your run"><span className="eyebrow">Share your run</span>
-            <div className="share-row">
-              <a className="share-btn" href={smsHref(text)}>Text</a>
-              <a className="share-btn wa" href={whatsappHref(text)} target="_blank" rel="noopener noreferrer">WhatsApp</a>
-            </div>
-          </section>
-        );
-      })()}
-      <button className="primary" onClick={() => { clearSave(); setRun(null); setSeed(Date.now() % 100000); setScreen({ kind: 'start' }); }}>New run</button>
-    </main>
+      )} />
   );
 }
