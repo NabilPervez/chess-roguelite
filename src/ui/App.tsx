@@ -13,6 +13,8 @@ import { fightPayout, type Payout } from '../run/economy';
 import { Results } from './Results';
 import { Wheels } from './Wheels';
 import { Graveyard } from './Graveyard';
+import { Formation } from './Formation';
+import { useDrag } from './useDrag';
 import { bury, recover } from '../run/graveyard';
 import { openingArmy, openingSpins, spin, takeWheel } from '../run/wheels';
 import { GameOver } from './GameOver';
@@ -27,7 +29,7 @@ import { Onboarding } from './Onboarding';
 import { hasOnboarded, markOnboarded } from './onboarding';
 import { Splash } from './Splash';
 
-type Screen = { kind: 'splash' } | { kind: 'onboard' } | { kind: 'start' } | { kind: 'map' } | { kind: 'fight'; node: MapNode } | { kind: 'boss'; node: MapNode } | { kind: 'reward'; offers: Reward[] } | { kind: 'rest' } | { kind: 'shop'; items: ShopItem[]; bought: number[]; rerolls: number } | { kind: 'event'; id: string; result?: string } | { kind: 'results'; pay: Payout; node: MapNode } | { kind: 'wheels'; mode: 'opening' | 'reward'; spins: Kind[][] } | { kind: 'graveyard'; back: Screen } | { kind: 'end' };
+type Screen = { kind: 'splash' } | { kind: 'onboard' } | { kind: 'start' } | { kind: 'map' } | { kind: 'fight'; node: MapNode } | { kind: 'boss'; node: MapNode } | { kind: 'reward'; offers: Reward[] } | { kind: 'rest' } | { kind: 'shop'; items: ShopItem[]; bought: number[]; rerolls: number } | { kind: 'event'; id: string; result?: string } | { kind: 'results'; pay: Payout; node: MapNode } | { kind: 'wheels'; mode: 'opening' | 'reward'; spins: Kind[][] } | { kind: 'graveyard'; back: Screen } | { kind: 'formation'; node: MapNode } | { kind: 'end' };
 const PIECE: Record<string, string> = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟' };
 const PIECE_NAME: Record<string, string> = { K: 'King', Q: 'Queen', R: 'Rook', B: 'Bishop', N: 'Knight', P: 'Pawn' };
 
@@ -41,6 +43,9 @@ export function App() {
   const [choices, setChoices] = useState(() => startingPassiveChoices(mulberry32(seed)));
   const [mode, setMode] = useState<RunMode>('draft');
   const [saved, setSaved] = useState(() => loadSave());
+  // Shop drag-to-buy: the hook lives at the top (hooks can't sit inside a screen branch); the shop sets the handler.
+  const shopDrop = useRef<(i: number) => void>(() => {});
+  const shopDrag = useDrag<number>((i) => shopDrop.current(i));
   const fightRef = useRef<{ nodeId: string; game: GameState } | undefined>(undefined);
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
   const [showSettings, setShowSettings] = useState(false);
@@ -179,7 +184,7 @@ export function App() {
         else if (n.type === 'shop') setScreen({ kind: 'shop', items: rollShop(run, nodeRand(run.seed, n.id, 'shop')), bought: [], rerolls: 0 });
         else if (n.type === 'event') setScreen({ kind: 'event', id: rollEvent(nodeRand(run.seed, n.id, 'event')) });
         else if (n.type === 'boss') setScreen({ kind: 'boss', node: n });
-        else { fightRef.current = undefined; setScreen({ kind: 'fight', node: n }); }
+        else { fightRef.current = undefined; setScreen({ kind: 'formation', node: n }); }
       }} />
     </main>
   );
@@ -199,16 +204,24 @@ export function App() {
           </div>
         </section>
         {army}
-        <button className="primary" onClick={() => { fightRef.current = undefined; setScreen({ kind: 'fight', node: screen.node }); }}>Face the Regent</button>
+        <button className="primary" onClick={() => { fightRef.current = undefined; setScreen({ kind: 'formation', node: screen.node }); }}>Face the Regent</button>
       </main>
     );
+  }
+
+  if (screen.kind === 'formation') {
+    const node = screen.node;
+    const { opts } = fightOpts(node, run.army, settings.beaten ? settings.eloFloor : null);
+    const title = node.type === 'boss' ? `Boss · ${tuning.run.boss.name}` : node.type === 'elite' ? `Row ${node.row + 1} · Elite` : `Row ${node.row + 1} · Fight`;
+    return <Formation key={node.id} army={run.army} initial={run.formation} enemy={opts.enemyArmy ?? []} title={title}
+      onFight={(f) => { fightRef.current = undefined; setRun({ ...run, formation: f }); setScreen({ kind: 'fight', node }); }} />;
   }
 
   if (screen.kind === 'fight') {
     const { court, enemyPassives, opts } = fightOpts(screen.node, run.army, settings.beaten ? settings.eloFloor : null);
     const resumed = fightRef.current?.nodeId === screen.node.id ? fightRef.current.game : null;
     const fresh = () => {
-      const g = newGame(court, run.passives, enemyPassives, { ...opts, playerArmy: run.army });
+      const g = newGame(court, run.passives, enemyPassives, { ...opts, playerArmy: run.army, playerFormation: run.formation });
       const n = screen.node.type === 'fight' ? tuning.tiles.perFight : tuning.tiles.elitePerFight;
       const seeded = seedTiles(g, mulberry32(seed + screen.node.row * 131 + screen.node.col * 17), n, tuning.tiles.pool as TileKind[]);
       return applyRelics(setupFight(seeded, resolveHooks(seeded)), run.relics ?? []);
@@ -299,6 +312,7 @@ export function App() {
     const needsTarget = (it: ShopItem) => it.type === 'remove' || (it.type === 'passive' && run.passives.length >= tuning.passives.maxActive);
     const isLocked = (it: ShopItem) => !!run.locked && JSON.stringify(run.locked) === JSON.stringify(it);
     const cost = rerollCost(rerolls);
+    shopDrop.current = (i) => { const it = items[i]; if (!it || bought.includes(i) || run.gold < it.price || blocked(it)) return; if (needsTarget(it)) setShopPick({ item: it, i }); else purchase(it, i); };
     const card = (it: ShopItem, i: number) => {
       const sold = bought.includes(i);
       const off = sold || run.gold < it.price || blocked(it);
@@ -308,7 +322,7 @@ export function App() {
         : { icon: '✂', name: 'Remove a passive', desc: 'Clear a slot.' };
       return (
         <div key={i} className={`shop-card t-${it.type}${sold ? ' sold' : ''}`}>
-          <button className="shop-buy" disabled={off} onClick={() => (needsTarget(it) ? setShopPick({ item: it, i }) : purchase(it, i))}
+          <button className="shop-buy" disabled={off} {...(off ? {} : shopDrag.source(i))} onClick={() => (needsTarget(it) ? setShopPick({ item: it, i }) : purchase(it, i))}
             aria-label={`Buy ${head.name} for ${it.price} gold`}>
             <span className="art" aria-hidden="true">{head.icon}</span><b>{head.name}</b><small>{head.desc}</small>
             <span className="price-tag">{sold ? 'Sold' : `◈ ${it.price}`}</span>
@@ -337,7 +351,9 @@ export function App() {
             {canUpgradeCap(run) && <section className="cap-card"><div><span className="eyebrow">Army size</span><b>{pieceCap(run)} → {pieceCap(run) + 1}</b></div>
               <button disabled={run.gold < capUpgradePrice(run)} onClick={() => setRun(upgradeCap(run))}>Upgrade <span>◈{capUpgradePrice(run)}</span></button></section>}
           </div>
+          <div className={`dropzone shop-drop${shopDrag.over ? ' over' : ''}`} {...shopDrag.target()} aria-hidden="true">Drag here to buy</div>
           <button className="primary next" onClick={() => setScreen({ kind: 'map' })}>Next!</button>
+          {shopDrag.ghost}
         </>) : (
           <section className="card">
             <span className="eyebrow">{shopPick.item.type === 'remove' ? 'Remove which passive?' : `You can hold ${tuning.passives.maxActive} passives — replace one`}</span>

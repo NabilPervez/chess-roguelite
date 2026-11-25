@@ -41,3 +41,11 @@ Normal fights have no check (capturing the king ends them); elite and boss fight
 ## Fight objectives (Sprint 7)
 Normal fights rotate between five goals, set per map node and scaled by row (`tuning.json → objective`):
 **Captures** (4 → 6), **Material** (piece value, 6 → 10), **Officers** (non-pawns, from row 3), **Breakthrough** (promote a pawn, from row 4), **Take the king** (from row 6, +4 turns). Elites and the boss stay checkmate. Capture-boost passives (Bounty, Headhunter, Vengeance) only count in plain Captures fights.
+
+## Sprint 9 — Wheels, Graveyard, Formation (Nov 2026)
+- **Opening wheel** picks your whole draft army: King + 2 spins × 3 reels. No free pawns.
+- **Formation** before every fight: arrange your two home rows; it's remembered.
+- **Protect the King.** Captured pieces are gone for good and go to the **Graveyard** (last 5), where you can buy them back.
+- **Promote to anything**; promotions stay in your army.
+- **Results** screen with win reward + interest on banked gold. **Game Over** shows 12 stats and a copyable seed; play any seed from the start screen.
+- Shop: drag to buy (tap still works), Graveyard tab. Spec: `docs/prd-sprint9.md`.

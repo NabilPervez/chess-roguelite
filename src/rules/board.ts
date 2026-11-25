@@ -29,7 +29,30 @@ export function initialBoard(): Board {
 }
 
 /** Place an army on its home ranks: king central, other non-pawns on the back rank, pawns in front, overflow behind. */
-export function placeArmy(b: Board, side: Side, army: Kind[]): void {
+/** Home rows for a side: back rank first. */
+export const homeRows = (side: Side) => (side === 'player' ? [0, 1] : [N - 1, N - 2]);
+
+/** A formation is valid if it gives every army slot its own empty home square. */
+export function validFormation(army: Kind[], formation: string[] | undefined, side: Side = 'player'): formation is string[] {
+  if (!formation || formation.length !== army.length || new Set(formation).size !== formation.length) return false;
+  const rows = homeRows(side);
+  return formation.every((k) => { const [r, c] = k.split(',').map(Number); return rows.includes(r) && c >= 0 && c < N && Number.isInteger(c); });
+}
+
+/** The automatic layout as a formation ("r,c" per army slot). */
+export function defaultFormation(army: Kind[]): string[] {
+  const b = emptyBoard();
+  placeArmy(b, 'player', army);
+  const out: string[] = [];
+  b.forEach((row, r) => row.forEach((p, c) => { if (p?.slot !== undefined) out[p.slot] = `${r},${c}`; }));
+  return out;
+}
+
+export function placeArmy(b: Board, side: Side, army: Kind[], formation?: string[]): void {
+  if (side === 'player' && validFormation(army, formation)) {
+    formation.forEach((k, i) => { const [r, c] = k.split(',').map(Number); b[r][c] = { ...makePiece(side, army[i]), slot: i }; });
+    return;
+  }
   const back = side === 'player' ? 0 : N - 1;
   const front = side === 'player' ? 1 : N - 2;
   const backOrder = [3, 2, 1, 4, 0, 5];
@@ -55,13 +78,15 @@ export interface FightOpts {
   checkmate?: boolean;
   aiElo?: number;
   objective?: ObjectiveKind;
+  /** Player-chosen home squares per army slot. */
+  playerFormation?: string[];
 }
 
 export function newGame(court: string | null, playerPassives: string[], enemyPassives: string[] = [], opts: FightOpts = {}): GameState {
   let board = initialBoard();
   if (opts.playerArmy || opts.enemyArmy) {
     board = emptyBoard();
-    placeArmy(board, 'player', opts.playerArmy ?? [...tuning.setup.backRank, ...tuning.setup.pawnRank] as Kind[]);
+    placeArmy(board, 'player', opts.playerArmy ?? [...tuning.setup.backRank, ...tuning.setup.pawnRank] as Kind[], opts.playerFormation);
     placeArmy(board, 'enemy', opts.enemyArmy ?? [...tuning.setup.backRank, ...tuning.setup.pawnRank] as Kind[]);
   }
   return {

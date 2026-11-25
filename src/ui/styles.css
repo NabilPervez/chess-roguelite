@@ -419,7 +419,7 @@ small.warn { font-weight: 600; }
 .gold-pill.corner { position: absolute; top: 16px; right: 16px; margin: 0; }
 .panel { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 40px 16px 20px; margin-top: 24px; }
 .panel-paper { background: color-mix(in srgb, var(--surface) 70%, var(--bg)); }
-.panel-tab { position: absolute; top: 0; left: 50%; transform: translate(-50%, -50%); margin: 0; padding: 8px 24px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; font-size: 22px; font-weight: 600; letter-spacing: -0.027em; white-space: nowrap; max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; text-wrap: balance; }
+.panel-tab { position: absolute; top: 0; left: 50%; transform: translate(-50%, -50%); margin: 0; padding: 8px 24px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; font-size: 22px; font-weight: 600; letter-spacing: -0.027em; white-space: nowrap; max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; }
 .panel-body { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .lede { margin: 0; font-size: 16px; color: var(--text); text-wrap: pretty; } .lede span { color: var(--muted); }
 .big-btn { background: var(--accent); color: var(--on-accent); border: 0; border-radius: 12px; padding: 16px 24px; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; min-height: 56px; transition: transform .2s cubic-bezier(.16,1,.3,1); }
@@ -489,3 +489,17 @@ button.reel:hover { border-color: var(--accent); } .reel.chosen, .reel.triple { 
 .promo .ghost { background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
 
 @media (prefers-reduced-motion: reduce) { .reel-strip, .reel-face { animation: none; } }
+
+/* Formation (Nabil, 2026-11-25: set your lineup every fight) */
+.enemy-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.enemy-line .pcs { display: flex; flex-wrap: wrap; gap: 2px; }
+.form-board { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.form-board .sq { aspect-ratio: 1; border: 0; padding: 0; display: grid; place-items: center; font-size: clamp(24px, 8vw, 40px); }
+.form-board .sq.light { background: var(--sq-light); } .form-board .sq.dark { background: var(--sq-dark); }
+.form-board .sq.sel { outline: 2px solid var(--accent); outline-offset: -2px; }
+.form-board .sq.move:hover { background: color-mix(in srgb, var(--accent) 30%, var(--sq-light)); }
+.form-board .pc.king { text-shadow: 0 0 0 var(--accent); color: var(--accent); }
+.back { align-self: center; }
+
+/* Shop drop zone */
+.shop-drop { margin: 0 16px; min-height: 64px; }
