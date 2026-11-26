@@ -12,7 +12,7 @@ export const STYLES: { id: ArtStyle; name: string; desc: string }[] = [
   { id: 'toy', name: 'Paper Toy', desc: 'Chunky, bright tokens.' },
   { id: 'parlor', name: 'Pixel Parlor', desc: 'CRT pixels on a swirling felt.' },
 ];
-export const DEFAULT_SETTINGS: Settings = { style: 'obsidian', theme: 'system', beaten: false, eloFloor: null };
+export const DEFAULT_SETTINGS: Settings = { style: 'parlor', theme: 'system', beaten: false, eloFloor: null };
 const KEY = tuning.settings.key;
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>;

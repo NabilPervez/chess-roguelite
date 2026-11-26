@@ -32,3 +32,29 @@ describe('formation', () => {
     expect(validFormation(full, defaultFormation(full))).toBe(true);
   });
 });
+
+import { eloForNode, profileFor } from '../src/ai/elo';
+import { fightOpts } from '../src/run/run';
+import { generateMap } from '../src/run/map';
+import { mulberry32 } from '../src/run/rng';
+import { fightPayout } from '../src/run/economy';
+
+describe('warm-up rows', () => {
+  const E = tuning.ai.elo;
+  it('early plain fights use a very weak, blunder-heavy AI', () => {
+    for (let r = 0; r < E.easyRows; r++) expect(eloForNode(r, 'fight')).toBe(E.easyElo);
+    expect(profileFor(E.easyElo).blunder).toBeGreaterThanOrEqual(0.5);
+    expect(eloForNode(0, 'fight', 600)).toBeGreaterThan(E.easyElo); // Elo floor overrides the warm-up
+  });
+  it('early enemies are a tiny army', () => {
+    expect(fightOpts({ id: 'a', row: 0, col: 0, type: 'fight', court: null, next: [] }).opts.enemyArmy).toEqual(tuning.run.easy.army);
+    expect(fightOpts({ id: 'b', row: tuning.run.easy.rows, col: 0, type: 'fight', court: null, next: [] }).opts.enemyArmy!.length).toBeGreaterThan(tuning.run.easy.army.length);
+  });
+  it('every map has a shop on the guaranteed row', () => {
+    for (let s = 1; s < 30; s++) expect(generateMap(mulberry32(s)).rows[tuning.run.guaranteedShopRow].some((n) => n.type === 'shop')).toBe(true);
+  });
+  it('warm-up bonus adds to the win reward', () => {
+    const g = newGame(null, []);
+    expect(fightPayout(g, { ...g, status: 'won' }, 0, 7).winGold).toBe(tuning.economy.winReward + 7);
+  });
+});

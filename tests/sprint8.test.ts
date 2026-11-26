@@ -7,8 +7,8 @@ const mem = (v: unknown) => ({ getItem: () => JSON.stringify(v), setItem: () => 
 
 describe('Elo floor', () => {
   it('no floor keeps the default curve', () => {
-    expect(eloForNode(0, 'fight')).toBe(E.start);
-    expect(eloForNode(3, 'fight', null)).toBe(E.start + 3 * E.perRow);
+    expect(eloForNode(0, 'fight')).toBe(E.easyElo);
+    expect(eloForNode(E.easyRows, 'fight', null)).toBe(E.start + E.easyRows * E.perRow);
     expect(eloForNode(14, 'boss')).toBe(E.boss);
   });
   it('floor sets row 1 and shifts the whole curve up', () => {

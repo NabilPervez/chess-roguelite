@@ -31,6 +31,12 @@ export function generateMap(rand: Rand): RunMap {
       return { id: `${r}-${c}`, row: r, col: c, type, court, next: [] };
     }));
   }
+  // One guaranteed shop early so the warm-up gold has somewhere to go.
+  const g = tuning.run.guaranteedShopRow;
+  if (g > 0 && g < R - 2 && !rows[g].some((n) => n.type === 'shop')) {
+    const n = rows[g][Math.floor(rand() * rows[g].length)];
+    n.type = 'shop'; n.court = null;
+  }
   for (let r = 0; r < R - 1; r++) {
     const cur = rows[r], nxt = rows[r + 1];
     const pos = (i: number, len: number) => (len === 1 ? 0.5 : i / (len - 1));

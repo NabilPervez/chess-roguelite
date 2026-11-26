@@ -103,16 +103,24 @@
       "perRow": 30,
       "eliteBonus": 75,
       "boss": 800,
-      "min": 200,
+      "min": 100,
       "max": 1200,
       "floor": {
         "min": 200,
         "max": 2000,
         "step": 25,
         "ceiling": 2400
-      }
+      },
+      "easyRows": 4,
+      "easyElo": 100
     },
     "profiles": [
+      {
+        "maxElo": 199,
+        "depth": 1,
+        "blunder": 0.6,
+        "noise": 2.5
+      },
       {
         "maxElo": 449,
         "depth": 1,
@@ -352,7 +360,17 @@
         ],
         "passive": "zealot"
       }
-    }
+    },
+    "easy": {
+      "rows": 4,
+      "army": [
+        "K",
+        "P",
+        "P"
+      ],
+      "bonusGold": 10
+    },
+    "guaranteedShopRow": 3
   },
   "save": {
     "version": 2,

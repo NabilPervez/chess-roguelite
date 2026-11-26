@@ -503,3 +503,86 @@ button.reel:hover { border-color: var(--accent); } .reel.chosen, .reel.triple { 
 
 /* Shop drop zone */
 .shop-drop { margin: 0 16px; min-height: 64px; }
+
+/* ---------- Gambonanza-style fight + shop layout (Nabil, 2026-11-25: "closer to the game") ----------
+   Structure for every style; the Pixel Parlor block below adds the reference look (rose/cream panels,
+   hatched enemy half, chunky green NEXT). Still one type scale and the style's own tokens. */
+.gb-fight { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 8px; align-items: stretch; }
+.gb-fight .board { width: 100%; min-width: 0; }
+.vrail { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.vrail-label { font-size: 13px; color: var(--muted); writing-mode: vertical-rl; transform: rotate(180deg); margin-bottom: 4px; }
+.vrail .slot { width: 28px; height: 28px; display: grid; place-items: center; font-size: 22px; color: var(--enemy); }
+.vrail.lost .slot { color: var(--player); }
+.vrail .slot:not(.full)::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+@media (min-width: 700px) { .gb-fight { grid-template-columns: 56px minmax(0, 1fr) 56px; } .board-wrap.gb-fight .board { width: min(100%, calc(100dvh - 330px)); justify-self: center; } }
+
+.shop-screen.gb { max-width: 1100px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px; }
+.gb-side { display: flex; flex-direction: column; gap: 8px; align-items: center; min-width: 0; }
+.board.mini { width: min(100%, 220px); pointer-events: none; }
+.board.mini .sq { font-size: 20px; }
+.gb-stage { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: min(100%, 220px); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--line); gap: 1px; }
+.gb-stage div { background: var(--surface); padding: 8px; text-align: center; } .gb-stage span { display: block; font-size: 13px; color: var(--muted); } .gb-stage b { font-size: 18px; }
+.gb-side-btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.gb-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; position: relative; }
+.gb-gold { align-self: flex-end; margin: 0; }
+.gb-shop { margin-top: 16px; }
+.gb-sub { display: block; text-align: center; font-size: 16px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.gb-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 16px 8px; padding: 12px 8px 20px; border-radius: 12px; background: color-mix(in srgb, var(--bg) 35%, transparent); }
+.gb-row .shop-card { min-width: 0; }
+.gb-row .shop-buy small { display: none; } /* names + art only, like the reference; details live in aria-label */
+.gb-reroll, .gb-upgrade { position: relative; min-height: 88px; border-radius: 12px; border: 1px solid var(--line); background: var(--accent-2); color: #fff; font-size: 18px; font-weight: 600; padding: 8px 8px 24px; }
+.gb-reroll:disabled, .gb-upgrade:disabled { opacity: .5; cursor: not-allowed; }
+.gb-split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.gb-cap { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 12px 24px; border-radius: 12px; background: color-mix(in srgb, var(--bg) 35%, transparent); text-align: center; }
+.gb-cap span { font-size: 16px; } .gb-cap b { font-size: 32px; line-height: 1; }
+.gb-upgrade { min-height: 56px; width: 100%; max-width: 200px; margin-top: 8px; }
+.gb-next { background: #4caf50; color: #fff; font-size: 24px; text-transform: uppercase; align-self: center; min-width: min(100%, 280px); }
+.shop-drop { margin: 0; }
+@media (min-width: 900px) {
+  .shop-screen.gb { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); align-items: center; min-height: 100dvh; }
+  .board.mini, .gb-stage { width: 100%; } .board.mini .sq { font-size: 34px; }
+  .gb-split { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+}
+
+/* Pixel Parlor = the Gambonanza look */
+[data-style="parlor"] .sq.dark { background: var(--sq-dark); }
+[data-style="parlor"] .sq.foe-half.light { background: repeating-linear-gradient(135deg, var(--sq-light) 0 4px, color-mix(in srgb, var(--sq-light) 55%, #000) 4px 7px); }
+[data-style="parlor"] .sq.foe-half.dark { background: repeating-linear-gradient(135deg, var(--sq-dark) 0 4px, color-mix(in srgb, var(--sq-dark) 55%, #000) 4px 7px); }
+[data-style="parlor"] .vrail { background: var(--line); border: 3px solid var(--sq-dark); box-shadow: 0 4px 0 var(--shadow); border-radius: 8px; }
+[data-style="parlor"] .vrail.lost { background: var(--surface); border-color: var(--line); }
+[data-style="parlor"] .vrail .slot:not(.full)::before { background: #1b1418; width: 12px; height: 12px; }
+[data-style="parlor"] .vrail-label { color: var(--shadow); } [data-style="parlor"] .vrail.lost .vrail-label { color: var(--text); }
+[data-style="parlor"] .panel { background: var(--surface); border: 3px solid var(--line); box-shadow: 0 6px 0 var(--shadow); border-radius: 14px; }
+[data-style="parlor"] .panel-paper { background: var(--line); color: var(--shadow); }
+[data-style="parlor"] .panel-paper .lede, [data-style="parlor"] .panel-paper .statgrid dt { color: var(--shadow); }
+[data-style="parlor"] .panel-tab { background: var(--surface); color: var(--text); border: 3px solid var(--line); box-shadow: 0 4px 0 var(--shadow); text-transform: uppercase; text-shadow: 2px 2px 0 var(--shadow); }
+[data-style="parlor"] .panel-paper .panel-tab { background: var(--line); color: var(--sq-dark); text-shadow: none; }
+[data-style="parlor"] .gb-row, [data-style="parlor"] .gb-cap { background: color-mix(in srgb, var(--surface) 75%, #000); }
+[data-style="parlor"] .gb-sub { color: var(--line); text-shadow: 2px 2px 0 var(--shadow); }
+[data-style="parlor"] .gb-row .shop-buy { background: var(--line); border: 3px solid var(--shadow); color: var(--shadow); box-shadow: 0 4px 0 var(--shadow); }
+[data-style="parlor"] .gb-row .shop-buy .art { background: transparent; color: var(--shadow); font-size: 34px; }
+[data-style="parlor"] .gb-row .t-piece .shop-buy { background: #4c8a4f; } [data-style="parlor"] .gb-row .t-piece .shop-buy .art { color: var(--line); text-shadow: 2px 2px 0 var(--shadow); }
+[data-style="parlor"] .gb-row .t-relic .shop-buy { background: var(--accent-2); } [data-style="parlor"] .gb-row .t-relic .shop-buy .art, [data-style="parlor"] .gb-row .t-relic b { color: var(--line); }
+[data-style="parlor"] .price-tag { border: 3px solid var(--shadow); font-size: 16px; }
+[data-style="parlor"] .gb-reroll, [data-style="parlor"] .gb-upgrade { border: 3px solid var(--line); box-shadow: 0 4px 0 var(--shadow); text-shadow: 2px 2px 0 var(--shadow); }
+[data-style="parlor"] .gb-upgrade { background: var(--surface); }
+[data-style="parlor"] .dropzone { border: 3px dashed var(--line); color: var(--line); opacity: .7; background: color-mix(in srgb, var(--surface) 70%, #000); }
+[data-style="parlor"] .big-btn { border: 3px solid var(--line); box-shadow: 0 4px 0 var(--shadow); text-shadow: 2px 2px 0 var(--shadow); text-transform: uppercase; }
+[data-style="parlor"] .big-btn:not(.alt) { background: #4caf50; color: #fff; }
+[data-style="parlor"] .big-btn.alt { background: var(--surface); color: var(--text); }
+[data-style="parlor"] .gb-stage { border: 3px solid var(--line); background: var(--line); box-shadow: 0 4px 0 var(--shadow); }
+[data-style="parlor"] .gb-stage div { background: var(--line); color: var(--sq-dark); } [data-style="parlor"] .gb-stage span { color: var(--sq-dark); }
+[data-style="parlor"] .hud .stat { background: var(--line); color: var(--sq-dark); } [data-style="parlor"] .hud .stat .eyebrow, [data-style="parlor"] .hud .stat b small { color: var(--sq-dark); }
+[data-style="parlor"] .reel { background: var(--surface); border: 3px solid var(--shadow); }
+[data-style="parlor"] .reels { background: color-mix(in srgb, var(--surface) 75%, #000); border: 3px solid var(--line); }
+[data-style="parlor"] .tray-item { background: var(--shadow); border: 3px solid var(--line); }
+/* Fixes after QA (2026-11-25): fixed-size grid tracks so boards never clip; contrast on cream cards. */
+.board { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-template-rows: repeat(6, minmax(0, 1fr)); }
+.board-wrap.gb-fight .board { min-width: 0; width: 100%; }
+.gb-fight { align-items: start; } .gb-fight .vrail { align-self: stretch; }
+.board.mini .sq .pc { font-size: inherit; line-height: 1; }
+@media (min-width: 700px) { .board-wrap.gb-fight .board { width: min(100%, calc(100dvh - 330px)); } }
+[data-style="parlor"] .gb-row .t-passive .shop-buy, [data-style="parlor"] .gb-row .t-remove .shop-buy { background: var(--line); color: var(--sq-dark); }
+[data-style="parlor"] .gb-row .t-passive .shop-buy .art, [data-style="parlor"] .gb-row .t-remove .shop-buy .art { color: var(--sq-dark); }
+[data-style="parlor"] .gb-row .shop-buy:disabled { opacity: .55; filter: saturate(.5); }
+[data-style="parlor"] .chip-btn { background: var(--surface); color: var(--text); border: 3px solid var(--line); box-shadow: 0 3px 0 var(--shadow); }

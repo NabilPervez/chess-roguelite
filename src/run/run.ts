@@ -98,7 +98,8 @@ export function fightOpts(node: MapNode, army?: Kind[], eloFloor: number | null 
     const passive = e.passivePool[(node.row * 7 + node.col) % e.passivePool.length];
     return { court: node.court, enemyPassives: [passive], opts: { enemyArmy, capturesToWin: Infinity, turnLimit: e.turnLimit, checkmate: e.checkmate, aiElo: eloForNode(node.row, 'elite', eloFloor) } };
   }
-  const enemyArmy = tiers[Math.min(tiers.length - 1, base)] as Kind[];
+  const easy = node.row < tuning.run.easy.rows;
+  const enemyArmy = (easy ? tuning.run.easy.army : tiers[Math.min(tiers.length - 1, base)]) as Kind[];
   const obj = nodeObjective(node, enemyArmy, army);
   return { court: node.court, enemyPassives: [], opts: { enemyArmy, ...obj, aiElo: eloForNode(node.row, 'fight', eloFloor) } };
 }

@@ -21,6 +21,8 @@ export function eloForNode(row: number, type: string, floor: number | null = nul
   const shift = f === null ? 0 : Math.max(0, f - E.start);
   const cap = f === null ? E.max : E.floor.ceiling;
   if (type === 'boss') return Math.min(E.floor.ceiling, E.boss + shift);
+  // Nabil, 2026-11-25: the first rows are a warm-up to build gold, so plain fights there are very weak.
+  if (f === null && type === 'fight' && row < E.easyRows) return E.easyElo;
   const base = E.start + shift + row * E.perRow + (type === 'elite' ? E.eliteBonus : 0);
   return Math.max(E.min, Math.min(cap, base));
 }

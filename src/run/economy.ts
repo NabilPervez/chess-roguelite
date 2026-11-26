@@ -9,7 +9,7 @@ const count = (g: GameState, side: Side) => g.board.flat().filter((p) => p?.side
 export const interest = (banked: number) => Math.min(tuning.economy.interest.max, Math.floor(Math.max(0, banked) / tuning.economy.interest.per));
 
 /** Gold for a won fight: win reward, pieces kept, pieces taken, turns spare, then interest. Losses pay only tile gold. */
-export function fightPayout(start: GameState, end: GameState, banked = 0): Payout {
+export function fightPayout(start: GameState, end: GameState, banked = 0, bonus = 0): Payout {
   const E = tuning.economy;
   const tileGold = end.goldEarned ?? 0;
   const saved = count(end, 'player');
@@ -18,7 +18,7 @@ export function fightPayout(start: GameState, end: GameState, banked = 0): Payou
   const turnsLeft = Math.max(0, end.turnLimit - end.turnNumber);
   const mult = end.payoutMult ?? 1;
   if (end.status !== 'won') return { saved, captured, turnsLeft, winGold: 0, savedGold: 0, captureGold: 0, speedGold: 0, tileGold, interestGold: 0, mult, total: tileGold };
-  const winGold = E.winReward;
+  const winGold = E.winReward + bonus;
   const savedGold = saved * E.perSaved;
   const captureGold = captured * E.perCapture;
   const speedGold = Math.min(E.turnBonusCap, turnsLeft * E.perTurnLeft);

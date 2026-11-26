@@ -14,7 +14,8 @@ const blank = (over: Partial<GameState> = {}): GameState => ({ ...newGame(null, 
 
 describe('Elo scaling', () => {
   it('rises every row, elites above fights, boss fixed', () => {
-    expect(eloForNode(0, 'fight')).toBe(tuning.ai.elo.start);
+    expect(eloForNode(0, 'fight')).toBe(tuning.ai.elo.easyElo);
+    expect(eloForNode(tuning.ai.elo.easyRows, 'fight')).toBe(tuning.ai.elo.start + tuning.ai.elo.easyRows * tuning.ai.elo.perRow);
     expect(eloForNode(5, 'fight')).toBeGreaterThan(eloForNode(4, 'fight'));
     expect(eloForNode(5, 'elite')).toBeGreaterThan(eloForNode(5, 'fight'));
     expect(eloForNode(14, 'boss')).toBe(tuning.ai.elo.boss);

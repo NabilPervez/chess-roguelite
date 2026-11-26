@@ -3,7 +3,7 @@ import tuning from '../data/tuning.json';
 import { COURTS, PASSIVES, resolveHooks } from '../passives';
 import { newGame } from '../rules/board';
 import { setupFight } from '../rules/game';
-import { applyRelics, RELICS, type RelicId } from '../run/relics';
+import { applyRelics, RELICS } from '../run/relics';
 import { seedTiles } from '../rules/tiles';
 import type { TileKind } from '../rules/types';
 import type { Kind } from '../rules/types';
@@ -14,6 +14,7 @@ import { Results } from './Results';
 import { Wheels } from './Wheels';
 import { Graveyard } from './Graveyard';
 import { Formation } from './Formation';
+import { MiniBoard, Panel } from './Panel';
 import { useDrag } from './useDrag';
 import { bury, recover } from '../run/graveyard';
 import { openingArmy, openingSpins, spin, takeWheel } from '../run/wheels';
@@ -236,7 +237,7 @@ export function App() {
         const r = bury(foldFight({ ...run, relics: [] }, end), end);
         if (end.status !== 'won') { setRun({ ...r, gold: r.gold + (end.goldEarned ?? 0), status: 'lost' }); setScreen({ kind: 'end' }); return; }
         setRun({ ...r, fightsWon: r.fightsWon + 1 });
-        setScreen({ kind: 'results', pay: fightPayout(end, end, run.gold), node });
+        setScreen({ kind: 'results', pay: fightPayout(end, end, run.gold, node.row < tuning.run.easy.rows ? tuning.run.easy.bonusGold : 0), node });
       }} />;
   }
 
@@ -332,41 +333,51 @@ export function App() {
         </div>
       );
     };
-    const group = (t: ShopItem['type'][], label: string) => {
-      const list = items.map((it, i) => [it, i] as const).filter(([it]) => t.includes(it.type));
-      return list.length ? <section className="shop-sec"><span className="eyebrow">{label}</span><div className={`shop-grid t-${t[0]}`}>{list.map(([it, i]) => card(it, i))}</div></section> : null;
-    };
+    const cards = (t: ShopItem['type'][]) => items.map((it, i) => [it, i] as const).filter(([it]) => t.includes(it.type)).map(([it, i]) => card(it, i));
+    const row = run.at ? Number(run.at.split('-')[0]) + 1 : 1;
     return (
-      <main className="shop-screen">
-        <header className="fight-top"><button className="sq-btn" aria-label="Leave shop" onClick={() => setScreen({ kind: 'map' })}>‹</button><h1 className="shop-title">Shop</h1><span className="gold-pill">◈ {run.gold}</span></header>
-        <div className="army" aria-label="Your army">{run.army.map((k, i) => <span key={i} title={PIECE_NAME[k]} className="pc player small">{PIECE[k]}</span>)}
-          <span className="gold">{run.army.length}/{pieceCap(run)}{(run.relics ?? []).length ? ` · ${(run.relics ?? []).map((r) => RELICS[r as RelicId].icon).join('')}` : ''}</span></div>
-        {!shopPick ? (<>
-          <div className="shop-bar"><button className="chip-btn" onClick={() => setScreen({ kind: 'graveyard', back: screen })}>☠ Graveyard · {(run.graveyard ?? []).length}</button>
-            <button className="reroll" disabled={run.gold < cost} onClick={() => { const out = reroll(run, nodeRand(run.seed, run.at ?? '', `reroll${rerolls}`), rerolls); setRun(out.run); setScreen({ kind: 'shop', items: out.items, bought: [], rerolls: rerolls + 1 }); }}>↻ Reroll <span>◈{cost}</span></button></div>
-          <div className="shop-body">
-            {group(['piece'], 'Pieces')}
-            {group(['passive'], 'Passives')}
-            {group(['relic', 'remove'], `Relics · one-shot (${(run.relics ?? []).length}/${tuning.relics.max})`)}
-            {canUpgradeCap(run) && <section className="cap-card"><div><span className="eyebrow">Army size</span><b>{pieceCap(run)} → {pieceCap(run) + 1}</b></div>
-              <button disabled={run.gold < capUpgradePrice(run)} onClick={() => setRun(upgradeCap(run))}>Upgrade <span>◈{capUpgradePrice(run)}</span></button></section>}
+      <main className="shop-screen gb">
+        <aside className="gb-side" aria-label="Your board">
+          <MiniBoard army={run.army} formation={run.formation} />
+          <div className="gb-stage"><div><span>Row</span><b>{row}/{tuning.run.rows}</b></div><div><span>Fights</span><b>{run.fightsWon}</b></div></div>
+          <div className="gb-side-btns">
+            <button className="chip-btn" onClick={() => setScreen({ kind: 'graveyard', back: screen })}>☠ Graveyard · {(run.graveyard ?? []).length}</button>
+            <button className="chip-btn" onClick={() => setScreen({ kind: 'map' })}>‹ Map</button>
           </div>
-          <div className={`dropzone shop-drop${shopDrag.over ? ' over' : ''}`} {...shopDrag.target()} aria-hidden="true">Drag here to buy</div>
-          <button className="primary next" onClick={() => setScreen({ kind: 'map' })}>Next!</button>
+        </aside>
+        <div className="gb-main">
+          <span className="gold-pill gb-gold">◈ {run.gold}</span>
+          <Panel title="Shop" className="gb-shop">
+            {!shopPick ? (<>
+              <span className="gb-sub">Upgrade your run!</span>
+              <div className="gb-row">
+                <button className="gb-reroll" disabled={run.gold < cost} onClick={() => { const out = reroll(run, nodeRand(run.seed, run.at ?? '', `reroll${rerolls}`), rerolls); setRun(out.run); setScreen({ kind: 'shop', items: out.items, bought: [], rerolls: rerolls + 1 }); }}>
+                  Reroll<span className="price-tag">◈{cost}</span></button>
+                {cards(['piece', 'passive'])}
+              </div>
+              <div className="gb-split">
+                <div className="gb-row gb-relics" aria-label={`Relics, one-shot (${(run.relics ?? []).length}/${tuning.relics.max})`}>{cards(['relic', 'remove'])}</div>
+                <div className="gb-cap">
+                  <span>Max army</span><b>{run.army.length}/{pieceCap(run)}</b>
+                  {canUpgradeCap(run) && <button className="gb-upgrade" disabled={run.gold < capUpgradePrice(run)} onClick={() => setRun(upgradeCap(run))}>Upgrade<span className="price-tag">◈{capUpgradePrice(run)}</span></button>}
+                </div>
+              </div>
+              <div className={`dropzone shop-drop${shopDrag.over ? ' over' : ''}`} {...shopDrag.target()} aria-hidden="true">Drag here to buy</div>
+            </>) : (<>
+              <span className="gb-sub">{shopPick.item.type === 'remove' ? 'Remove which passive?' : `You can hold ${tuning.passives.maxActive} passives — replace one`}</span>
+              <div className="passive-grid one">
+                {run.passives.map((id) => (
+                  <button key={id} className="passive" onClick={() => purchase(shopPick.item, shopPick.i, id)}>
+                    <strong>Drop {PASSIVES[id].name}</strong><span>{PASSIVES[id].desc}</span>
+                  </button>
+                ))}
+                <button className="ghost" onClick={() => setShopPick(null)}>Back</button>
+              </div>
+            </>)}
+          </Panel>
+          {!shopPick && <button className="big-btn gb-next" onClick={() => setScreen({ kind: 'map' })}>Next!</button>}
           {shopDrag.ghost}
-        </>) : (
-          <section className="card">
-            <span className="eyebrow">{shopPick.item.type === 'remove' ? 'Remove which passive?' : `You can hold ${tuning.passives.maxActive} passives — replace one`}</span>
-            <div className="passive-grid one">
-              {run.passives.map((id) => (
-                <button key={id} className="passive" onClick={() => purchase(shopPick.item, shopPick.i, id)}>
-                  <strong>Drop {PASSIVES[id].name}</strong><span>{PASSIVES[id].desc}</span>
-                </button>
-              ))}
-              <button className="ghost" onClick={() => setShopPick(null)}>Back</button>
-            </div>
-          </section>
-        )}
+        </div>
       </main>
     );
   }

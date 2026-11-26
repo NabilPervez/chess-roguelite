@@ -10,6 +10,20 @@ import { Board } from './Board';
 import { TILE_INFO } from '../rules/tiles';
 import type { TileKind } from '../rules/types';
 
+const G: Record<string, string> = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟' };
+/** Kinds on `side` that were on the start board but are gone now. */
+function gone(start: GameState, now: GameState, side: 'player' | 'enemy'): string[] {
+  const left = now.board.flat().filter((p) => p?.side === side).map((p) => p!.id);
+  return start.board.flat().filter((p) => p?.side === side && !left.includes(p.id)).map((p) => p!.kind);
+}
+/** Vertical slot rail beside the board (Gambonanza-style); empty slots show as dots. */
+const VRail = ({ items, label, cls }: { items: string[]; label: string; cls: string }) => (
+  <aside className={`vrail ${cls}`} aria-label={`${label}: ${items.length}`}>
+    <span className="vrail-label">{label}</span>
+    {[...Array(Math.max(6, items.length)).keys()].map((i) => <span key={i} className={items[i] ? 'slot full' : 'slot'}>{items[i] ? G[items[i]] : ''}</span>)}
+  </aside>
+);
+
 const GOAL_DESC: Record<string, string> = { mate: 'Trap the enemy king with no escape.', regicide: 'Capture the enemy king outright. No check rules.', captures: 'Take enemy pieces. Some passives make captures count extra.', material: 'Capture pieces worth this much: pawn 1, knight/bishop 3, rook 5, queen 9.', officers: 'Capture knights, bishops, rooks or queens. Pawns don\'t count.', breakthrough: 'Get one of your pawns to the far rank.' };
 const GOAL_NAME: Record<string, string> = { mate: 'Checkmate', regicide: 'Take the king', captures: 'Captures', material: 'Material', officers: 'Officers', breakthrough: 'Breakthrough' };
 
@@ -75,7 +89,11 @@ export function Fight({ initial, title, seed, onEnd, onProgress, gold, floor }: 
         <div className="stat"><span className="eyebrow">Turns</span><b className={turnsLeft <= 5 ? 'warn' : ''}>{turnsLeft}<small>/{game.turnLimit}</small></b></div>
         <div className={`stat${game.turn === 'player' ? ' you' : ''}`}><span className="eyebrow">Move</span><b>{game.turn === 'player' ? (checked ? 'Check!' : 'You') : 'Enemy'}</b></div>
       </section>
-      <div className="board-wrap"><Board game={game} sel={sel} moves={moves} onTap={tap} /></div>
+      <div className="board-wrap gb-fight">
+        <VRail items={gone(initial, game, 'enemy')} label="Taken" cls="taken" />
+        <Board game={game} sel={sel} moves={moves} onTap={tap} />
+        <VRail items={gone(initial, game, 'player')} label="Lost" cls="lost" />
+      </div>
       <div className="relic-row" role="toolbar" aria-label="Rules in play">
         {rules.map((r) => <button key={r.key} className={`relic ${r.kind}${openRule === r.key ? ' on' : ''}`} aria-label={`${r.group}: ${r.name}`} aria-pressed={openRule === r.key} onClick={() => setOpenRule(openRule === r.key ? null : r.key)}>{r.icon}</button>)}
         <button className="rules-btn" onClick={() => setDrawer(true)}>Rules · {rules.length}</button>

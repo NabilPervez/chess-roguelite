@@ -17,7 +17,7 @@ export function Board({ game, sel, moves, onTap }: { game: GameState; sel: Sq | 
           const tile = game.tiles?.[key({ r, c })];
           const frozen = p && isFrozen(game, p);
           const shield = p && isShielded(game, p);
-          const cls = ['sq', (r + c) % 2 ? 'light' : 'dark', isSel && 'sel', m && (m.capture ? 'cap' : 'move'), m?.tag && 'tag', tile && `tile tile-${tile}`].filter(Boolean).join(' ');
+          const cls = ['sq', (r + c) % 2 ? 'light' : 'dark', isSel && 'sel', m && (m.capture ? 'cap' : 'move'), m?.tag && 'tag', tile && `tile tile-${tile}`, r >= n / 2 && 'foe-half'].filter(Boolean).join(' ');
           return (
             <button key={`${r}-${c}`} className={cls} onClick={() => onTap({ r, c })}
               aria-label={`${'abcdef'[c]}${r + 1}${p ? ` ${p.side} ${NAME[p.kind]}` : ''}${tile ? `, ${TILE_INFO[tile].name} square` : ''}${frozen ? ', frozen' : ''}${shield ? ', shielded' : ''}${m ? (m.capture ? ', capture' : m.tag === 'swap' ? ', swap' : ', move here') : ''}`}>
